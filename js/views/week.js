@@ -39,7 +39,7 @@ ${future ? '' : `
 <div class="log">
   ${pipRow('protein', 'Protein', `${rec.protein || 0} of ${diet.proteinPortionTarget} portions`, rec.protein || 0, diet.proteinPortionTarget)}
   ${pipRow('meals', 'Meals', `${rec.meals || 0} of ${diet.mealsTarget}`, rec.meals || 0, diet.mealsTarget)}
-  <div class="logrow"><div class="logl"><b>Water</b><span>${diet.waterL} litres or more</span></div><button class="pip big ${rec.water ? 'on' : ''}" data-action="water" aria-pressed="${!!rec.water}" aria-label="Water target hit">${rec.water ? '✓' : ''}</button></div>
+  <div class="logrow"><div class="logl"><b>Water</b><span>${diet.waterL} litres or more</span></div><button class="donebtn" data-action="water" aria-pressed="${!!rec.water}">${rec.water ? 'Done ✓' : 'Done'}</button></div>
   ${(weekend && diet.alcoholRule) || rec.beers ? pipRow('beers', 'Beers', rec.beers ? `${rec.beers}${rec.beers > 2 ? ', over the two' : ''}` : 'none', rec.beers || 0, 2, 6) : ''}
   <div class="logrow"><div class="logl"><b>Sleep</b><span>hours, roughly</span></div><div class="stepper slim"><button data-action="sleep" data-dir="down" aria-label="Less sleep">−</button><output>${rec.sleep ?? '–'}</output><button data-action="sleep" data-dir="up" aria-label="More sleep">+</button></div></div>
   <div class="logrow"><div class="logl"><b>Morning weight</b><span>${units.body}, after the bathroom</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${bodyToInput(rec.weightKg, units)}" data-change="weight" aria-label="Weight"></div>

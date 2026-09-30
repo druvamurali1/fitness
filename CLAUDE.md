@@ -68,7 +68,7 @@ Palette from the gym photos: chalk `#EDEFEA`, rubber-floor charcoal `#23272B`, H
 
 Two signature elements, and they are the only places the design is loud:
 - `.hero.floor`: the charcoal band at the top of Today and the welcome screen (the rubber floor), with the workout letter in chalk, the primary button, and during a session a strip of set segments that fill yellow.
-- `.pin`: the set-done control, drawn as a weight-stack selector pin (bar plus knob). Hollow when pending; filled yellow and slid 6 px home when pressed. Motion is limited to this, row expansion, and the timer; all of it is off under `prefers-reduced-motion`.
+- `.donebtn` inside a `.setrow`: the set-done control is a button that says "Done", and the whole row turns yellow with a ✓ in the tag when pressed. The earlier hollow-pin control was dropped because the owner could not tell a set had been captured; do not bring back unlabelled toggles for anything that logs. Motion is limited to row expansion and the timer; all of it is off under `prefers-reduced-motion`.
 
 - `.wk-strip` on Week: seven columns inside the floor band, a tall block per day for the workout and two small blocks for protein and water. Filled yellow when done, rust outline for a missed lifting day, chrome outline for a planned one, chalk ring on the selected day.
 - `.pip`: tappable circles for counted targets (protein portions, meals, water, beers). Tap the n-th pip to set the count to n; tap the last filled one to step back. Same hole-and-pin look as the set control. Use pips for any small integer target; use a stepper only for real numbers (weight, reps, sleep).

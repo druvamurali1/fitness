@@ -432,3 +432,17 @@ td.num, th.num { text-align: right; }
 .chip.on { background: var(--pin); border-color: var(--pin); color: var(--pin-ink); }
 .painrow { padding: 12px 0; border-bottom: 1px solid var(--rule); }
 .note .actions.inline { margin-bottom: 0; }
+
+/* Set rows: the whole row changes when a set is done, and the button says so */
+.setlist { margin-top: 10px; }
+.setlist-head { display: grid; grid-template-columns: 38px 1fr 96px; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.setrow { display: grid; grid-template-columns: 38px 1fr 96px; gap: 10px; align-items: center; padding: 6px 0; border-left: 4px solid transparent; margin-left: -10px; padding-left: 6px; border-radius: 4px; transition: background .15s, border-color .15s; }
+.setrow.done { background: color-mix(in srgb, var(--pin) 14%, transparent); border-left-color: var(--pin); }
+.setrow.done .tag { background: var(--pin); color: var(--pin-ink); }
+.setrow.done .stepper { opacity: .55; }
+.donebtn { min-height: 44px; padding: 0 12px; border-radius: var(--radius); border: 2px solid var(--ink); background: transparent; color: var(--ink); font-weight: 800; font-size: 15px; white-space: nowrap; }
+.donebtn[aria-pressed="true"] { background: var(--pin); border-color: var(--pin); color: var(--pin-ink); }
+.donebtn:active { transform: scale(.97); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .donebtn { border-color: var(--chalk); color: var(--chalk); } :root:not([data-theme="light"]) .donebtn[aria-pressed="true"] { color: var(--pin-ink); } }
+:root[data-theme="dark"] .donebtn { border-color: var(--chalk); color: var(--chalk); }
+:root[data-theme="dark"] .donebtn[aria-pressed="true"] { color: var(--pin-ink); }

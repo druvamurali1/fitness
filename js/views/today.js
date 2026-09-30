@@ -55,7 +55,7 @@ export function renderToday(root, ctx) {
     load: el => { const { ex, dir } = el.dataset; const planEx = findPlanEx(plan, session, ex); const step = loadStep(units.load, planEx.loadType) * (dir === 'up' ? 1 : -1);
       store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const shown = displayLoad(it.weightLb ?? 0, units.load, planEx.loadType); it.weightLb = Math.max(0, toCanonicalLb(shown + step, units.load)); }); },
     reps: el => { const { ex, i, dir } = el.dataset; store.update(x => { const set = x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)]; set.reps = Math.min(300, Math.max(0, (set.reps ?? 0) + (dir === 'up' ? 1 : -1))); }); },
-    done: el => { const { ex, i } = el.dataset; const planEx = findPlanEx(plan, session, ex);
+    done: el => { const { ex, i } = el.dataset; const planEx = findPlanEx(plan, session, ex); try { navigator.vibrate && navigator.vibrate(15); } catch {}
       store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const set = it.sets[Number(i)]; set.done = !set.done;
         if (set.done && set.reps == null) {
           // Blank reps: reuse the previous set in this session, then last session's same set, then the plan's minimum.
@@ -92,7 +92,7 @@ export function introPoints(plan) {
     { title: 'Missing a day', text: `Nothing breaks. Say you do ${plan.workouts[0].id} on ${days[0]} and miss ${days[1] || 'the next day'}. On ${days[2] || 'your next gym day'} you do ${plan.workouts[1].id}, because ${plan.workouts[1].id} comes after ${plan.workouts[0].id}. You never do two workouts in one day to catch up, and you never skip ahead.` },
     { title: 'Every exercise is explained', text: 'Tap any exercise name for a video, where it is in your gym, how to set it up and how to do it. Read it before your first try.' },
     { title: 'The first two sessions', text: 'Your first two sessions of each workout are for learning. Light weight, perfect form. The numbers do not matter yet. After that, the app tells you when to add weight.' },
-    { title: 'Log as you go', text: 'Tap the pin when a set is done; the rest timer starts on its own. Weigh yourself in the morning, and tap the protein count in the Week tab.' },
+    { title: 'Log as you go', text: 'Tap Done after each set; the row turns yellow and the rest timer starts on its own. Weigh yourself in the morning, and tap the protein count in the Week tab.' },
   ];
 }
 
@@ -180,7 +180,7 @@ function idleNotices(d, today, next) {
 function isLearning(d, w) { return d.sessions.filter(s => s.completed && s.workoutId === w.id && s.source === 'main').length < 2; }
 
 function cardioRow(plan, rec, withLift) {
-  return `<div class="logrow"><div class="logl"><b>${esc(plan.cardio.name)}${withLift ? ', after lifting' : ''}</b><span>${withLift ? '10 to 20 easy minutes on the rower or bike once the sets are done. Optional.' : esc(plan.cardio.text)}</span></div><button class="pip big ${rec.cardio ? 'on' : ''}" aria-pressed="${!!rec.cardio}" data-action="cardio_done" aria-label="Cardio done">${rec.cardio ? '✓' : ''}</button></div>`;
+  return `<div class="logrow"><div class="logl"><b>${esc(plan.cardio.name)}${withLift ? ', after lifting' : ''}</b><span>${withLift ? '10 to 20 easy minutes on the rower or bike once the sets are done. Optional.' : esc(plan.cardio.text)}</span></div><button class="donebtn" aria-pressed="${!!rec.cardio}" data-action="cardio_done">${rec.cardio ? 'Done ✓' : 'Done'}</button></div>`;
 }
 
 function weighRow(rec, units, today) {
@@ -317,8 +317,8 @@ function guided(d, s, w, units) {
       ${left.length ? `<p class="warn small">Not logged: ${left.map(e => esc(e.name)).join(', ')}. Fine if you skipped them; go back if you forgot to tap.</p>` : ''}
       ${painRow(s)}
       <div class="log">
-        <div class="logrow"><div class="logl"><b>Cool down</b><span>${plan.cooldown.map(x => esc(x.text)).join(' ')}</span></div><button class="pip big ${s.checklist.cooldown ? 'on' : ''}" aria-pressed="${s.checklist.cooldown}" data-action="check" data-key="cooldown" aria-label="Cool-down done">${s.checklist.cooldown ? '✓' : ''}</button></div>
-        <div class="logrow"><div class="logl"><b>Protein</b><span>${esc(plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.')}</span></div><button class="pip big ${s.checklist.protein ? 'on' : ''}" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein" aria-label="Protein done">${s.checklist.protein ? '✓' : ''}</button></div>
+        <div class="logrow"><div class="logl"><b>Cool down</b><span>${plan.cooldown.map(x => esc(x.text)).join(' ')}</span></div><button class="donebtn" aria-pressed="${s.checklist.cooldown}" data-action="check" data-key="cooldown">${s.checklist.cooldown ? 'Done ✓' : 'Done'}</button></div>
+        <div class="logrow"><div class="logl"><b>Protein</b><span>${esc(plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.')}</span></div><button class="donebtn" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein">${s.checklist.protein ? 'Done ✓' : 'Done'}</button></div>
       </div>
       <button class="btn primary block" style="margin-top:20px" data-action="finish">Finish session</button>
     </section>${nav}`;
@@ -384,14 +384,16 @@ function setGrid(e, it, units, d) {
   return `
     <p class="small muted" style="margin:10px 0 4px">${esc(lastText)} ${esc(sugLine)}</p>
     ${shownLoad != null ? `<div class="load-line"><span class="lbl-inline">Weight</span><div class="stepper" aria-label="Load"><button type="button" data-action="load" data-ex="${e.exerciseId}" data-dir="down" aria-label="Less weight">−</button><input type="number" inputmode="decimal" step="any" value="${fmtNum(shownLoad, 1)}" data-change="loadin" data-ex="${e.exerciseId}" aria-label="Weight in ${units.load}"><button type="button" data-action="load" data-ex="${e.exerciseId}" data-dir="up" aria-label="More weight">+</button></div><span class="small muted">${units.load}${e.loadType === 'dumbbell' ? ' each hand' : e.loadType === 'barbell' ? ' incl. bar' : ''}</span></div>` : ''}
-    <div class="sets">
-      <span class="lbl">Set</span><span class="lbl">${e.measure === 'seconds' ? 'Seconds' : 'Reps'} you did${e.repMin != null ? ` (aim ${e.repMin}–${e.repMax})` : ''}</span><span class="lbl"></span><span class="lbl">Done</span>
-      ${it.sets.map((set, i) => `<span class="setno"><span class="tag">${i + 1}</span></span>
-        <div class="stepper" style="grid-column:2 / span 2"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="down" aria-label="Fewer">−</button><input type="number" inputmode="numeric" value="${set.reps ?? ''}" placeholder="${e.repMin ?? ''}" data-change="repsin" data-ex="${e.exerciseId}" data-i="${i}" aria-label="Set ${i + 1} ${e.measure}"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="up" aria-label="More">+</button></div>
-        <button type="button" class="pin" aria-pressed="${set.done}" data-action="done" data-ex="${e.exerciseId}" data-i="${i}" aria-label="Set ${i + 1} done"><span class="pin-bar"></span><span class="pin-knob"></span></button>`).join('')}
+    <div class="setlist">
+      <div class="setlist-head"><span>Set</span><span>${e.measure === 'seconds' ? 'Seconds' : 'Reps'} you did${e.repMin != null ? ` (aim ${e.repMin}–${e.repMax})` : ''}</span><span></span></div>
+      ${it.sets.map((set, i) => `<div class="setrow ${set.done ? 'done' : ''}">
+        <span class="tag">${set.done ? '✓' : i + 1}</span>
+        <div class="stepper"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="down" aria-label="Fewer">−</button><input type="number" inputmode="numeric" value="${set.reps ?? ''}" placeholder="${e.repMin ?? ''}" data-change="repsin" data-ex="${e.exerciseId}" data-i="${i}" aria-label="Set ${i + 1} ${e.measure}"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="up" aria-label="More">+</button></div>
+        <button type="button" class="donebtn" aria-pressed="${set.done}" data-action="done" data-ex="${e.exerciseId}" data-i="${i}">${set.done ? 'Done ✓' : 'Done'}</button>
+      </div>`).join('')}
     </div>
     ${e.free ? `<div class="actions inline" style="margin:10px 0 0"><button class="btn quiet small" data-action="add_set" data-ex="${e.exerciseId}">Add a set</button><button class="link" data-action="remove_ex" data-ex="${e.exerciseId}">Remove exercise</button></div>` : ''}
-    <p class="small muted" style="margin-top:10px">Tap the pin when the set is done. The rest timer starts by itself.</p>`;
+    <p class="small muted" style="margin-top:10px">Tap Done after each set. The row turns yellow and the rest timer starts.</p>`;
 }
 
 // "Busy or missing? Swap." Shows the fallbacks for this slot; one tap replaces
@@ -446,7 +448,7 @@ function freeIdleView(d, units, today) {
 ${weighRow(dayRec, units, today)}
 ${lastS ? `<h2 class="h2">Last time, ${fmtDate(lastS.date, { weekday: 'long', day: 'numeric', month: 'short' })}</h2>
 <ul class="rows">${(lastS.order || Object.keys(lastS.items)).map(id => { const it = lastS.items[id]; if (!it) return ''; const e = freePlanEx(id, lastS); const done = it.sets.filter(x => x.done); if (!done.length) return '';
-  return `<li class="row"><a class="row-head link-row" style="grid-template-columns:1fr auto" href="#exercise/${id}"><span><span class="row-title">${esc(e.name)}</span><br><span class="row-sub">${done.length} set${done.length === 1 ? '' : 's'}: ${done.map(x => x.reps).join(', ')}</span></span><span class="row-meta">${it.weightLb != null ? loadShort(it.weightLb, units, e.loadType) : ''}</span></a></li>`; }).join('')}</ul>` : `<p class="muted" style="margin-top:20px">Nothing logged yet. Start a workout, add the exercises you do, tap the pin after each set.</p>`}`;
+  return `<li class="row"><a class="row-head link-row" style="grid-template-columns:1fr auto" href="#exercise/${id}"><span><span class="row-title">${esc(e.name)}</span><br><span class="row-sub">${done.length} set${done.length === 1 ? '' : 's'}: ${done.map(x => x.reps).join(', ')}</span></span><span class="row-meta">${it.weightLb != null ? loadShort(it.weightLb, units, e.loadType) : ''}</span></a></li>`; }).join('')}</ul>` : `<p class="muted" style="margin-top:20px">Nothing logged yet. Start a workout, add the exercises you do, tap Done after each set.</p>`}`;
 }
 
 function freeSessionView(d, s, units) {
