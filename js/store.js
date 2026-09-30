@@ -122,13 +122,13 @@ export function startSession(workout, source = 'main') {
 }
 // Replace one exercise in an active session with a fallback. Sets already
 // logged on the original stay with it (they were done); the fallback starts fresh.
-export function swapExercise(sessionId, fromId, toId, weightLb) {
+export function swapExercise(sessionId, fromId, toId, weightLb, suggested = null) {
   update(d => { const s = d.sessions.find(x => x.id === sessionId); if (!s || s.items[toId]) return;
     s.swaps ||= {}; s.swaps[fromId] = toId;
     const old = s.items[fromId]; const n = old ? old.sets.length : 3;
     const keep = old && old.sets.some(x => x.done);
     if (!keep) delete s.items[fromId];
-    s.items[toId] = { weightLb, sets: Array.from({ length: n }, () => ({ reps: null, done: false })), swappedFrom: fromId };
+    s.items[toId] = { weightLb, suggested, sets: Array.from({ length: n }, () => ({ reps: null, done: false })), swappedFrom: fromId };
     if (s.order) s.order = s.order.map(k => k === fromId ? toId : k); });
 }
 export function finishSession(id) { update(d => { const s = d.sessions.find(x => x.id === id); if (s) { s.completed = true; s.finishedAt = Date.now(); } }); }

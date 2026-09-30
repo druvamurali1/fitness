@@ -34,7 +34,7 @@ export function renderToday(root, ctx) {
     swap_close: () => { ui.swapping = null; renderToday(root, ctx); },
     swap: el => { const { from, to } = el.dataset; const planEx = findPlanEx(plan, session, from); const alt = swapped(planEx, to); const h = store.exerciseHistory(to); const sug = suggestNext(alt, h);
       ui.swapping = null; if (ui.step === from) ui.step = to; ui.expanded.delete('ex:' + from); ui.expanded.add('ex:' + to);
-      store.swapExercise(session.id, from, to, sug.loadLb); },
+      store.swapExercise(session.id, from, to, sug.loadLb, sug); },
     add_set: el => { const ex = el.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets.push({ reps: null, done: false }); }); },
     remove_ex: el => { const ex = el.dataset.ex; store.update(x => { const s = x.sessions.find(s => s.id === session.id); delete s.items[ex]; s.order = s.order.filter(k => k !== ex); }); },
     got_it: () => { ui2.introStep = 0; ui2.introAll = false; store.update(x => { x.settings.sawIntro = true; }); },
