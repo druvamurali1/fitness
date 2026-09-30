@@ -1,0 +1,7 @@
+# Personal material stays on this Mac; only the app is published.
+*.HEIC
+*.heic
+docs/
+.claude/
+.DS_Store
+node_modules/
