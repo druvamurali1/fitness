@@ -25,10 +25,10 @@ export function renderOnboarding(root, ctx) {
   else root.innerHTML = step();
 
   delegate(root, {
-    start: () => { s.screen = 'step'; s.step = 0; s.error = null; s.a = { units: { load: 'lb', body: 'kg' }, heightUnit: 'cm' }; rerender(root, ctx); },
+    start: () => { s.screen = 'step'; s.step = 0; s.error = null; s.a = { units: { load: 'lb', body: 'kg' }, heightUnit: 'cm' }; rerender(root, ctx, { top: true }); },
     continue: el => { store.switchPerson(el.dataset.id); ctx.done(); },
-    resume: () => { s.screen = 'step'; s.error = null; rerender(root, ctx); },
-    free: () => { s.screen = 'free'; s.error = null; s.f = s.f || { units: { load: 'lb', body: 'kg' }, daysPerWeek: 3, dietType: 'nonveg' }; rerender(root, ctx); },
+    resume: () => { s.screen = 'step'; s.error = null; rerender(root, ctx, { top: true }); },
+    free: () => { s.screen = 'free'; s.error = null; s.f = s.f || { units: { load: 'lb', body: 'kg' }, daysPerWeek: 3, dietType: 'nonveg' }; rerender(root, ctx, { top: true }); },
     free_choose: el => { s.f[el.dataset.key] = el.dataset.value; rerender(root, ctx); },
     free_unit: el => { const [scope, val] = el.dataset.value.split(':'); s.f.units[scope] = val; rerender(root, ctx); },
     free_build: () => {
@@ -42,18 +42,18 @@ export function renderOnboarding(root, ctx) {
       store.update(d => { d.profile = profile; d.plan = plan; d.settings.units = f.units; d.settings.sawIntro = true; });
       s.screen = 'welcome'; s.f = null; ctx.done();
     },
-    home: () => { s.screen = 'welcome'; s.error = null; rerender(root, ctx); },
-    edit_step: el => { s.screen = 'step'; s.step = Number(el.dataset.i); s.error = null; rerender(root, ctx); },
+    home: () => { s.screen = 'welcome'; s.error = null; rerender(root, ctx, { top: true }); },
+    edit_step: el => { s.screen = 'step'; s.step = Number(el.dataset.i); s.error = null; rerender(root, ctx, { top: true }); },
     load_profile: el => { finish({ ...PROFILES[el.dataset.id], presetId: el.dataset.id }, ctx); },
     import: () => pickFile(text => { try { store.importJSON(text); } catch (e) { alert(e.message); } }),
-    back: () => { if (s.screen === 'review') { s.screen = 'step'; s.step = INTAKE_STEPS.length - 1; } else if (s.screen === 'blocked') { s.screen = 'step'; } else if (s.step === 0) { s.screen = 'welcome'; } else { s.step--; } s.error = null; rerender(root, ctx); },
+    back: () => { if (s.screen === 'review') { s.screen = 'step'; s.step = INTAKE_STEPS.length - 1; } else if (s.screen === 'blocked') { s.screen = 'step'; } else if (s.step === 0) { s.screen = 'welcome'; } else { s.step--; } s.error = null; rerender(root, ctx, { top: true }); },
     next: () => {
       const stepDef = INTAKE_STEPS[s.step];
-      const err = validate(stepDef, s.a); if (err) { s.error = err; rerender(root, ctx); return; }
+      const err = validate(stepDef, s.a); if (err) { s.error = err; rerender(root, ctx); root.querySelector('.error')?.scrollIntoView({ block: 'center' }); return; }
       s.error = null;
-      if (stepDef.id === 'health' && checkRedFlags(s.a).length) { s.screen = 'blocked'; rerender(root, ctx); return; }
+      if (stepDef.id === 'health' && checkRedFlags(s.a).length) { s.screen = 'blocked'; rerender(root, ctx, { top: true }); return; }
       if (s.step === INTAKE_STEPS.length - 1) { s.screen = 'review'; } else { s.step++; }
-      rerender(root, ctx);
+      rerender(root, ctx, { top: true });
     },
     choose: el => { s.a[el.dataset.key] = coerce(el.dataset.value); rerender(root, ctx); },
     multi: el => { const k = el.dataset.key; const set = new Set(s.a[k] || []); set.has(el.dataset.value) ? set.delete(el.dataset.value) : set.add(el.dataset.value); s.a[k] = [...set]; rerender(root, ctx); },
@@ -74,7 +74,13 @@ export function renderOnboarding(root, ctx) {
   });
 }
 
-function rerender(root, ctx) { renderOnboarding(root, ctx); window.scrollTo(0, 0); }
+// Re-draw in place. Only a change of screen or part goes back to the top;
+// picking an answer keeps you where you were.
+function rerender(root, ctx, { top = false } = {}) {
+  const y = window.scrollY;
+  renderOnboarding(root, ctx);
+  if (top) window.scrollTo(0, 0); else window.scrollTo(0, y);
+}
 
 function setField(key, value) {
   const a = state.a;

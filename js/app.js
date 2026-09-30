@@ -46,8 +46,9 @@ function route() {
   nav.querySelectorAll('a').forEach(a => { if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   const changed = current !== tab;
   current = tab;
+  const y = window.scrollY;
   views[tab](root, { doc, navigate });
-  if (changed) { window.scrollTo(0, 0); root.focus({ preventScroll: true }); }
+  if (changed) { window.scrollTo(0, 0); root.focus({ preventScroll: true }); } else window.scrollTo(0, y);
 }
 
 window.addEventListener('hashchange', route);
