@@ -39,7 +39,7 @@ ${v ? video(v) : `<div class="empty">No video linked yet for this one. The steps
 
 <h2 class="h3">Where it is in your gym</h2>
 ${photo ? `<img class="gym-photo" src="${photo}" alt="Your photo of this equipment">` : ''}
-${editing ? `<div class="field" style="margin-top:6px"><label for="wherenote">Describe it so you find it next time</label><textarea class="input" id="wherenote" data-field="where" placeholder="${esc(equipmentFallback(key))} For example: the grey machine by the stairs, second from the left.">${esc(d.profile?.equipmentNotes?.[key] || '')}</textarea></div>
+${editing ? `<div class="field" style="margin-top:6px"><label for="wherenote">Describe it so you find it next time</label><textarea class="input" id="wherenote" maxlength="300" data-field="where" placeholder="${esc(equipmentFallback(key))} For example: the grey machine by the stairs, second from the left.">${esc(d.profile?.equipmentNotes?.[key] || '')}</textarea></div>
 <div class="actions inline" style="margin-top:0"><button class="btn small" data-action="save_where">Save</button><label class="btn quiet small" style="cursor:pointer">${photo ? 'Replace photo' : 'Add a photo'}<input type="file" accept="image/*" capture="environment" hidden data-change="gymphoto"></label>${photo ? `<button class="link" data-action="del_photo">Remove photo</button>` : ''}<button class="link" data-action="cancel_where">Cancel</button></div>`
 : `<p>${esc(where || equipmentFallback(key))}</p><button class="link" data-action="edit_where">${where && d.profile?.equipmentNotes?.[key] ? 'Edit this note or photo' : 'Add a note or a photo of where it is'}</button>`}
 
@@ -62,7 +62,7 @@ ${hist.length ? `<h2 class="h3" style="margin-top:26px">Your last ${hist.length 
   delegate(root, {
     edit_where: () => { ui.editing = key; renderExercise(root, ctx, id); },
     cancel_where: () => { ui.editing = null; renderExercise(root, ctx, id); },
-    save_where: () => { const text = root.querySelector('[data-field="where"]').value.trim(); ui.editing = null; store.update(x => { x.profile ||= {}; x.profile.equipmentNotes ||= {}; if (text) x.profile.equipmentNotes[key] = text; else delete x.profile.equipmentNotes[key]; }); },
+    save_where: () => { const text = root.querySelector('[data-field="where"]').value.trim().slice(0, 300); ui.editing = null; store.update(x => { x.profile ||= {}; x.profile.equipmentNotes ||= {}; if (text) x.profile.equipmentNotes[key] = text; else delete x.profile.equipmentNotes[key]; }); },
     del_photo: () => { store.update(x => { if (x.equipmentPhotos) delete x.equipmentPhotos[key]; }); },
     play: el => { const wrap = el.closest('.video'); wrap.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0&modestbranding=1" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`; },
   });

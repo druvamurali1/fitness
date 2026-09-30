@@ -29,7 +29,7 @@ export function renderToday(root, ctx) {
     pick_open: () => { ui.picking = true; ui.q = ''; renderToday(root, ctx); root.querySelector('[data-change="q"]')?.focus(); },
     pick_close: () => { ui.picking = false; renderToday(root, ctx); },
     pick: el => { const id = el.dataset.id; const h = store.exerciseHistory(id); const last = h.length ? h[h.length - 1] : null; store.addFreeExercise(session.id, id, last ? last.weightLb : (EXERCISES[id]?.start?.lb ?? null)); ui.picking = false; ui.expanded.add('ex:' + id); },
-    pick_custom: () => { const name = (ui.q || '').trim(); if (!name) return; const id = store.addCustomExercise(name); store.addFreeExercise(session.id, id, null); ui.picking = false; ui.expanded.add('ex:' + id); },
+    pick_custom: () => { const name = (ui.q || '').trim().slice(0, 40); if (!name) return; const id = store.addCustomExercise(name); store.addFreeExercise(session.id, id, null); ui.picking = false; ui.expanded.add('ex:' + id); },
     add_set: el => { const ex = el.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets.push({ reps: null, done: false }); }); },
     remove_ex: el => { const ex = el.dataset.ex; store.update(x => { const s = x.sessions.find(s => s.id === session.id); delete s.items[ex]; s.order = s.order.filter(k => k !== ex); }); },
     got_it: () => { ui2.introStep = 0; ui2.introAll = false; store.update(x => { x.settings.sawIntro = true; }); },
@@ -44,7 +44,7 @@ export function renderToday(root, ctx) {
     check: el => { const k = el.dataset.key; store.update(x => { const s = x.sessions.find(s => s.id === session.id); s.checklist[k] = !s.checklist[k]; }); },
     load: el => { const { ex, dir } = el.dataset; const planEx = findPlanEx(plan, session, ex); const step = loadStep(units.load, planEx.loadType) * (dir === 'up' ? 1 : -1);
       store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const shown = displayLoad(it.weightLb ?? 0, units.load, planEx.loadType); it.weightLb = Math.max(0, toCanonicalLb(shown + step, units.load)); }); },
-    reps: el => { const { ex, i, dir } = el.dataset; store.update(x => { const set = x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)]; set.reps = Math.max(0, (set.reps ?? 0) + (dir === 'up' ? 1 : -1)); }); },
+    reps: el => { const { ex, i, dir } = el.dataset; store.update(x => { const set = x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)]; set.reps = Math.min(300, Math.max(0, (set.reps ?? 0) + (dir === 'up' ? 1 : -1))); }); },
     done: el => { const { ex, i } = el.dataset; const planEx = findPlanEx(plan, session, ex);
       store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const set = it.sets[Number(i)]; set.done = !set.done;
         if (set.done && set.reps == null) {
@@ -60,10 +60,10 @@ export function renderToday(root, ctx) {
     discard: () => { if (confirm('Throw this session away? Nothing from it will be saved.')) { stopTimer(); store.abandonSession(session.id); ui.step = null; } },
     cardio_done: () => { const cur = store.day(today).cardio; store.setDay(today, { cardio: !cur }); },
   });
-  root.querySelectorAll('[data-change="weight"]').forEach(inp => inp.onchange = () => { store.setDay(today, { weightKg: bodyFromInput(inp.value, units) }); });
+  root.querySelectorAll('[data-change="weight"]').forEach(inp => inp.onchange = () => { const kg = bodyFromInput(inp.value, units); if (kg != null && (kg < 30 || kg > 250)) { inp.value = ''; alert(units.body === 'lb' ? 'Weight should be between 66 and 551 lb.' : 'Weight should be between 30 and 250 kg.'); return; } store.setDay(today, { weightKg: kg }); });
   const q = root.querySelector('[data-change="q"]'); if (q) q.oninput = () => { ui.q = q.value; const list = root.querySelector('#picklist'); if (list) list.innerHTML = pickList(d, ui.q); };
-  root.querySelectorAll('[data-change="repsin"]').forEach(inp => inp.onchange = () => { const { ex, i } = inp.dataset; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)].reps = Math.max(0, Number(inp.value) || 0); }); });
-  root.querySelectorAll('[data-change="loadin"]').forEach(inp => inp.onchange = () => { const ex = inp.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].weightLb = Math.max(0, toCanonicalLb(Number(inp.value) || 0, units.load)); }); });
+  root.querySelectorAll('[data-change="repsin"]').forEach(inp => inp.onchange = () => { const { ex, i } = inp.dataset; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)].reps = Math.min(300, Math.max(0, Math.round(Number(inp.value) || 0))); }); });
+  root.querySelectorAll('[data-change="loadin"]').forEach(inp => inp.onchange = () => { const ex = inp.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].weightLb = Math.min(2500, Math.max(0, toCanonicalLb(Number(inp.value) || 0, units.load))); }); });
 }
 
 // ── First run: how this works ───────────────────────────────────

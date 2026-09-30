@@ -44,7 +44,7 @@ ${future ? '' : `
   <div class="logrow"><div class="logl"><b>Sleep</b><span>hours, roughly</span></div><div class="stepper slim"><button data-action="sleep" data-dir="down" aria-label="Less sleep">−</button><output>${rec.sleep ?? '–'}</output><button data-action="sleep" data-dir="up" aria-label="More sleep">+</button></div></div>
   <div class="logrow"><div class="logl"><b>Morning weight</b><span>${units.body}, after the bathroom</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${bodyToInput(rec.weightKg, units)}" data-change="weight" aria-label="Weight"></div>
   ${dow === 0 || rec.waistCm ? `<div class="logrow"><div class="logl"><b>Waist</b><span>at the navel, relaxed, ${units.body === 'lb' ? 'inches' : 'cm'}</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${waistToInput(rec.waistCm, units)}" data-change="waist" aria-label="Waist"></div>` : ''}
-  <div class="logrow col"><div class="logl"><b>Note</b></div><input class="input" type="text" value="${esc(rec.note || '')}" placeholder="Anything worth remembering" data-change="note" aria-label="Note for the day"></div>
+  <div class="logrow col"><div class="logl"><b>Note</b></div><input class="input" type="text" value="${esc(rec.note || '')}" placeholder="Anything worth remembering" maxlength="200" data-change="note" aria-label="Note for the day"></div>
 </div>`}
 
 <h2 class="h2">This week</h2>
@@ -64,9 +64,9 @@ ${allTime(d, plan, today)}`;
     sleep: el => { const cur = store.day(sel).sleep ?? 7; store.setDay(sel, { sleep: Math.max(0, Math.min(14, cur + (el.dataset.dir === 'up' ? 0.5 : -0.5))) }); },
   });
   const bind = (name, fn) => root.querySelectorAll(`[data-change="${name}"]`).forEach(i => i.onchange = () => fn(i.value));
-  bind('weight', v => store.setDay(sel, { weightKg: bodyFromInput(v, units) }));
-  bind('waist', v => store.setDay(sel, { waistCm: v === '' ? null : (units.body === 'lb' ? Number(v) * 2.54 : Number(v)) }));
-  bind('note', v => store.setDay(sel, { note: v.trim() || null }));
+  bind('weight', v => { const kg = bodyFromInput(v, units); if (kg != null && (kg < 30 || kg > 250)) { alert(units.body === 'lb' ? 'Weight should be between 66 and 551 lb.' : 'Weight should be between 30 and 250 kg.'); renderWeek(root, ctx); return; } store.setDay(sel, { weightKg: kg }); });
+  bind('waist', v => { const cm = v === '' ? null : (units.body === 'lb' ? Number(v) * 2.54 : Number(v)); if (cm != null && (cm < 40 || cm > 200)) { alert(units.body === 'lb' ? 'Waist should be between 16 and 79 inches.' : 'Waist should be between 40 and 200 cm.'); renderWeek(root, ctx); return; } store.setDay(sel, { waistCm: cm }); });
+  bind('note', v => store.setDay(sel, { note: v.trim().slice(0, 200) || null }));
 }
 
 // A row of tappable pips. Tap the n-th to set the count to n; tap the last

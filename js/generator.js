@@ -151,6 +151,7 @@ function progressionRules(p) {
 // ── Diet ────────────────────────────────────────────────────────
 
 export function energyTargets(p) {
+  p = { ...p, weightKg: clampNum(p.weightKg, 30, 250, 70), heightCm: clampNum(p.heightCm, 120, 230, 170), age: clampNum(p.age, 14, 90, 30) };
   const bmr = 10 * p.weightKg + 6.25 * p.heightCm - 5 * p.age + (p.sex === 'male' ? 5 : -161);
   const mult = { sedentary: 1.45, light: 1.6, active: 1.75 }[p.activity] || 1.45;
   const tdee = bmr * mult;
@@ -278,3 +279,5 @@ export function freePlan(profile, { today } = {}) {
     cautions: [], notes: [], equipmentNotes: p.equipmentNotes || {}, units: p.units || { load: 'lb', body: 'kg' },
   };
 }
+
+function clampNum(v, lo, hi, dflt) { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt; }

@@ -5,11 +5,11 @@
 export const INTAKE_STEPS = [
   { id: 'about', title: 'About you', intro: 'The basics a trainer needs before anything else.',
     fields: [
-      { key: 'name', label: 'Your name', type: 'text', required: true },
+      { key: 'name', label: 'Your name', type: 'text', required: true, maxLength: 40 },
       { key: 'age', label: 'Age', type: 'number', min: 14, max: 90, required: true },
       { key: 'sex', label: 'Sex', type: 'choice', options: [['male', 'Male'], ['female', 'Female']], required: true },
-      { key: 'heightCm', label: 'Height', type: 'height', required: true },
-      { key: 'weightKg', label: 'Current weight', type: 'weight', required: true },
+      { key: 'heightCm', label: 'Height', type: 'height', required: true, min: 120, max: 230 },
+      { key: 'weightKg', label: 'Current weight', type: 'weight', required: true, min: 30, max: 250 },
       { key: 'activity', label: 'What do you do all day?', type: 'choice', required: true, options: [
         ['sedentary', 'Mostly sitting'], ['light', 'On my feet some of the day'], ['active', 'Physical work'] ] },
       { key: 'sleepHours', label: 'Hours of sleep on a typical night', type: 'number', min: 3, max: 12, step: 0.5, required: true },
@@ -19,8 +19,8 @@ export const INTAKE_STEPS = [
     fields: [
       { key: 'goal', label: 'In six months, what matters most?', type: 'choice', required: true, options: [
         ['muscle', 'Build muscle and weigh more'], ['strength', 'Get stronger'], ['fat_loss', 'Lose fat'], ['health', 'General health and energy'] ] },
-      { key: 'targetWeightKg', label: 'Target weight, if you have one', type: 'weight', required: false },
-      { key: 'why', label: 'Why now? What changed?', type: 'textarea', required: false },
+      { key: 'targetWeightKg', label: 'Target weight, if you have one', type: 'weight', required: false, min: 30, max: 250 },
+      { key: 'why', label: 'Why now? What changed?', type: 'textarea', required: false, maxLength: 500 },
     ] },
 
   { id: 'health', title: 'Health screening', intro: 'Answer honestly. Some answers mean you see a doctor before you see a barbell.',
@@ -59,7 +59,7 @@ export const INTAKE_STEPS = [
       { key: 'equipment', label: 'Available', type: 'multi', options: [
         ['barbell', 'Barbell with a rack'], ['dumbbells', 'Dumbbells'], ['bench', 'Adjustable bench'], ['cables', 'Cable machine'],
         ['machines', 'Weight machines (pulldown, row, press, leg curl)'], ['leg_press', 'Leg press'], ['pullup_bar', 'Pull-up bar'], ['cardio', 'Rower, bike or treadmill'] ] },
-      { key: 'dumbbellMax', label: 'Heaviest dumbbell', type: 'load', required: false },
+      { key: 'dumbbellMax', label: 'Heaviest dumbbell', type: 'load', required: false, min: 1, max: 200 },
     ] },
 
   { id: 'food', title: 'Food', intro: 'The plan fits your kitchen, not the other way round.',
@@ -78,7 +78,7 @@ export const INTAKE_STEPS = [
 
   { id: 'mindset', title: 'Mindset', intro: 'Last three. They shape how the app talks to you.',
     fields: [
-      { key: 'quitReason', label: 'If you have started before, what made you stop?', type: 'textarea', required: false },
+      { key: 'quitReason', label: 'If you have started before, what made you stop?', type: 'textarea', required: false, maxLength: 500 },
       { key: 'tone', label: 'When you miss a week, the app should be', type: 'choice', required: true, options: [
         ['silent', 'Silent'], ['plain', 'Matter-of-fact'], ['loud', 'In my face'] ] },
     ] },

@@ -67,7 +67,7 @@ ${diet.alcoholRule ? `<p class="small" style="margin-top:12px"><b>Alcohol:</b> $
 <p><b>If you miss a day:</b> nothing. Next time you're in, you do the next workout in the rotation. No doubling up.</p>
 
 <h2 class="h2" id="plan-settings">Settings</h2>
-<div class="logrow"><div class="logl"><b>Your name</b><span>shown on the home screen</span></div><input class="input" style="width:150px" type="text" value="${esc(p?.name || '')}" data-change="name" aria-label="Your name"></div>
+<div class="logrow"><div class="logl"><b>Your name</b><span>shown on the home screen</span></div><input class="input" style="width:150px" type="text" maxlength="40" value="${esc(p?.name || '')}" data-change="name" aria-label="Your name"></div>
 <div class="logrow"><div class="logl"><b>Lifting loads</b><span>plates and dumbbells</span></div><div class="seg"><button aria-pressed="${units.load === 'lb'}" data-action="unit" data-scope="load" data-value="lb">lb</button><button aria-pressed="${units.load === 'kg'}" data-action="unit" data-scope="load" data-value="kg">kg</button></div></div>
 <div class="logrow"><div class="logl"><b>Bodyweight and waist</b><span>kg and cm, or lb and inches</span></div><div class="seg"><button aria-pressed="${units.body === 'kg'}" data-action="unit" data-scope="body" data-value="kg">kg</button><button aria-pressed="${units.body === 'lb'}" data-action="unit" data-scope="body" data-value="lb">lb</button></div></div>
 <div class="logrow"><div class="logl"><b>Appearance</b></div><div class="seg">${['auto', 'light', 'dark'].map(t => `<button aria-pressed="${(d.settings.theme || 'auto') === t}" data-action="theme" data-value="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
@@ -104,7 +104,7 @@ function bindChips(root) {
 
 function bindName(root) {
   const inp = root.querySelector('[data-change="name"]');
-  if (inp) inp.onchange = () => { const v = inp.value.trim(); if (v) store.update(x => { x.profile = { ...x.profile, name: v }; }); };
+  if (inp) inp.onchange = () => { const v = inp.value.trim().slice(0, 40); if (v) store.update(x => { x.profile = { ...x.profile, name: v }; }); else inp.value = store.load().profile?.name || ''; };
 }
 
 function workoutBlock(w, units) {
@@ -148,7 +148,7 @@ ${customs.length ? `<h3 class="h3">Yours</h3><ul class="rows">${customs.map(([id
 ${Object.keys(PATTERN_NAMES).map(k => groups[k] ? `<h3 class="h3">${PATTERN_NAMES[k]}</h3><ul class="rows">${groups[k].map(x => `<li class="row"><a class="row-head link-row" style="grid-template-columns:1fr auto" href="#exercise/${x.id}"><span class="row-title">${esc(x.name)}</span><span class="row-meta chev" aria-hidden="true">▸</span></a></li>`).join('')}</ul>` : '').join('')}
 
 <h2 class="h2">Settings</h2>
-<div class="signal"><div><div class="lbl">Your name</div><div class="sub">Shown on the home screen.</div></div><input class="input" style="width:150px" type="text" value="${esc(p?.name || '')}" data-change="name" aria-label="Your name"></div>
+<div class="signal"><div><div class="lbl">Your name</div><div class="sub">Shown on the home screen.</div></div><input class="input" style="width:150px" type="text" maxlength="40" value="${esc(p?.name || '')}" data-change="name" aria-label="Your name"></div>
 <div class="signal"><div><div class="lbl">Lifting loads</div></div><div class="seg"><button aria-pressed="${units.load === 'lb'}" data-action="unit" data-scope="load" data-value="lb">lb</button><button aria-pressed="${units.load === 'kg'}" data-action="unit" data-scope="load" data-value="kg">kg</button></div></div>
 <div class="signal"><div><div class="lbl">Bodyweight and waist</div></div><div class="seg"><button aria-pressed="${units.body === 'kg'}" data-action="unit" data-scope="body" data-value="kg">kg</button><button aria-pressed="${units.body === 'lb'}" data-action="unit" data-scope="body" data-value="lb">lb</button></div></div>
 <div class="signal"><div><div class="lbl">Appearance</div></div><div class="seg">${['auto', 'light', 'dark'].map(t => `<button aria-pressed="${(d.settings.theme || 'auto') === t}" data-action="theme" data-value="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
@@ -178,6 +178,6 @@ ${Object.keys(PATTERN_NAMES).map(k => groups[k] ? `<h3 class="h3">${PATTERN_NAME
     reset: () => { if (confirm(`Erase ${p?.name || 'this person'}'s data on this device? Export a backup first if you want to keep it.`) && confirm('Last chance. Erase all sessions, logs and photos for this person?')) store.reset(); },
   });
   bindName(root);
-  root.querySelector('[data-change="protein"]').onchange = e => retarget({ proteinG: Number(e.target.value) || null });
+  root.querySelector('[data-change="protein"]').onchange = e => { const n = Number(e.target.value); if (n && (n < 40 || n > 400)) { alert('Protein target should be between 40 and 400 g.'); renderFree(root, ctx); return; } retarget({ proteinG: n || null }); };
   root.querySelector('[data-change="goal"]').onchange = e => { const n = Number(e.target.value); retarget({ targetWeightKg: n ? (units.body === 'lb' ? n / 2.2046 : n) : null }); };
 }

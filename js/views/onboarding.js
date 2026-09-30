@@ -33,7 +33,10 @@ export function renderOnboarding(root, ctx) {
     free_unit: el => { const [scope, val] = el.dataset.value.split(':'); s.f.units[scope] = val; rerender(root, ctx); },
     free_build: () => {
       const f = s.f;
-      if (!f.name) { s.error = 'Fill in your name.'; rerender(root, ctx); return; }
+      if (!f.name || !f.name.trim()) { s.error = 'Fill in your name.'; rerender(root, ctx); return; }
+      f.name = f.name.trim().slice(0, 40);
+      if (f.weightKg != null && (f.weightKg < 30 || f.weightKg > 250)) { s.error = f.units.body === 'lb' ? 'Weight should be between 66 and 551 lb, or leave it blank.' : 'Weight should be between 30 and 250 kg, or leave it blank.'; rerender(root, ctx); return; }
+      if (f.proteinG != null && (f.proteinG < 40 || f.proteinG > 400)) { s.error = 'Protein target should be between 40 and 400 g, or leave it blank.'; rerender(root, ctx); return; }
       const profile = { name: f.name, units: f.units, weightKg: f.weightKg || null, daysPerWeek: Number(f.daysPerWeek) || 3, proteinG: f.proteinG || null, dietType: f.dietType, tone: 'plain' };
       const plan = freePlan(profile);
       store.update(d => { d.profile = profile; d.plan = plan; d.settings.units = f.units; d.settings.sawIntro = true; });
@@ -87,12 +90,20 @@ function coerce(v) { return v; }
 
 function validate(stepDef, a) {
   for (const f of stepDef.fields) {
-    if (!f.required) continue;
     const v = a[f.key];
-    if (f.type === 'yesno' && typeof v !== 'boolean') return `Answer "${f.label}".`;
-    if (f.type === 'days' && !(v && v.length)) return `Pick at least one day.`;
-    if (f.type !== 'yesno' && f.type !== 'days' && (v == null || v === '' || (Array.isArray(v) && !v.length))) return `Fill in "${f.label}".`;
-    if (f.type === 'number' && (v < f.min || v > f.max)) return `"${f.label}" should be between ${f.min} and ${f.max}.`;
+    const empty = v == null || v === '' || (Array.isArray(v) && !v.length);
+    if (f.required) {
+      if (f.type === 'yesno' && typeof v !== 'boolean') return `Answer "${f.label}".`;
+      if (f.type === 'days' && empty) return 'Pick at least one day.';
+      if (f.type !== 'yesno' && f.type !== 'days' && empty) return `Fill in "${f.label}".`;
+    }
+    if (empty) continue;
+    if ((f.type === 'text' || f.type === 'textarea') && String(v).trim().length === 0) return `"${f.label}" is only spaces.`;
+    if ((f.type === 'text' || f.type === 'textarea') && f.maxLength && String(v).length > f.maxLength) return `"${f.label}" is too long. Keep it under ${f.maxLength} characters.`;
+    if (f.type === 'number' && (Number.isNaN(Number(v)) || v < f.min || v > f.max)) return `"${f.label}" should be a number between ${f.min} and ${f.max}.`;
+    if (f.type === 'height' && (v < f.min || v > f.max)) return a.heightUnit === 'ft' ? `Height should be between ${Math.floor(f.min / 30.48)} ft and ${Math.floor(f.max / 30.48)} ft ${Math.round(f.max / 2.54 % 12)} in.` : `Height should be between ${f.min} and ${f.max} cm.`;
+    if (f.type === 'weight' && (v < f.min || v > f.max)) return a.units.body === 'lb' ? `"${f.label}" should be between ${Math.round(kgToLb(f.min))} and ${Math.round(kgToLb(f.max))} lb.` : `"${f.label}" should be between ${f.min} and ${f.max} kg.`;
+    if (f.type === 'load') { const n = v[a.units.load]; const lo = a.units.load === 'kg' ? Math.round(lbToKg(f.min)) : f.min, hi = a.units.load === 'kg' ? Math.round(lbToKg(f.max)) : f.max; if (n != null && (n < lo || n > hi)) return `"${f.label}" should be between ${lo} and ${hi} ${a.units.load}.`; }
   }
   if (stepDef.id === 'schedule' && a.trainingDays && a.trainingDays.length !== Number(a.daysPerWeek)) return `You chose ${a.daysPerWeek} lifting days but picked ${a.trainingDays.length}. Make them match.`;
   return null;
@@ -101,6 +112,7 @@ function validate(stepDef, a) {
 function finish(answers, ctx) {
   const profile = { ...answers };
   delete profile._ft; delete profile._in; delete profile.heightUnit;
+  if (typeof profile.name === 'string') profile.name = profile.name.trim().slice(0, 40);
   const plan = generatePlan(profile);
   if (plan.blocked) { state.screen = 'blocked'; state.a = answers; return; }
   store.update(d => { d.profile = profile; d.plan = plan; d.settings.units = profile.units || d.settings.units; });
@@ -152,7 +164,7 @@ function freeSetup() {
   <div class="display-words">Four things</div>
   <p class="sub">Enough to count your week and set a protein target. Change any of it later in the Plan tab.</p>
 </header>
-<div class="field"><label for="fname">Your name</label><input class="input" id="fname" data-ffield="name" value="${esc(f.name ?? '')}" autocomplete="off"></div>
+<div class="field"><label for="fname">Your name</label><input class="input" id="fname" data-ffield="name" value="${esc(f.name ?? '')}" autocomplete="off" maxlength="40"></div>
 <div class="field"><label for="fw">Current weight</label><div class="inline-units"><input class="input" type="number" inputmode="decimal" id="fw" data-ffield="weight" value="${shownW}">
   <div class="seg"><button type="button" aria-pressed="${u.body === 'kg'}" data-action="free_unit" data-value="body:kg">kg</button><button type="button" aria-pressed="${u.body === 'lb'}" data-action="free_unit" data-value="body:lb">lb</button></div></div>
   <p class="help">Optional. Used to suggest a protein target and to start your weight chart.</p></div>
@@ -198,8 +210,8 @@ function field(f, a) {
   const v = a[f.key];
   const id = 'f_' + f.key;
   switch (f.type) {
-    case 'text': return `<div class="field"><label for="${id}">${esc(f.label)}</label><input class="input" id="${id}" data-field="${f.key}" value="${esc(v ?? '')}" autocomplete="off"></div>`;
-    case 'textarea': return `<div class="field"><label for="${id}">${esc(f.label)}</label><textarea class="input" id="${id}" data-field="${f.key}">${esc(v ?? '')}</textarea></div>`;
+    case 'text': return `<div class="field"><label for="${id}">${esc(f.label)}</label><input class="input" id="${id}" data-field="${f.key}" value="${esc(v ?? '')}" autocomplete="off" ${f.maxLength ? `maxlength="${f.maxLength}"` : ''}></div>`;
+    case 'textarea': return `<div class="field"><label for="${id}">${esc(f.label)}</label><textarea class="input" id="${id}" data-field="${f.key}" ${f.maxLength ? `maxlength="${f.maxLength}"` : ''}>${esc(v ?? '')}</textarea></div>`;
     case 'number': return `<div class="field"><label for="${id}">${esc(f.label)}</label><input class="input" type="number" inputmode="decimal" id="${id}" data-field="${f.key}" min="${f.min}" max="${f.max}" step="${f.step || 1}" value="${v ?? ''}"></div>`;
     case 'choice': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="choices" role="radiogroup">${f.options.map(([val, lab]) => `<button type="button" class="choice" role="radio" aria-checked="${String(v) === val}" data-action="choose" data-key="${f.key}" data-value="${val}"><span class="dot"></span><span>${esc(lab)}</span></button>`).join('')}</div></div>`;
     case 'multi': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="choices">${f.options.map(([val, lab]) => `<button type="button" class="choice sq" aria-pressed="${(v || []).includes(val)}" data-action="multi" data-key="${f.key}" data-value="${val}"><span class="dot"></span><span>${esc(lab)}</span></button>`).join('')}</div><p class="help">Leave all unticked if none apply.</p></div>`;

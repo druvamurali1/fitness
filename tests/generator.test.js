@@ -99,3 +99,10 @@ test('self-driven plan has targets and no workouts', async () => {
   assert.ok(p.diet.proteinPortions.some(x => /tofu/i.test(x)));
   assert.equal(freePlan({ name: 'T', proteinG: 150 }).diet.proteinG, 150);
 });
+
+test('absurd body numbers are clamped before the calorie maths', () => {
+  const t = energyTargets({ ...druva, weightKg: 5, heightCm: 900, age: 3 });
+  assert.ok(t.calories > 1200 && t.calories < 4500, `calories ${t.calories}`);
+  const u = energyTargets({ ...druva, weightKg: 'shdvcoih', heightCm: NaN });
+  assert.ok(u.proteinG >= 100 && u.proteinG <= 160, `protein ${u.proteinG}`);
+});
