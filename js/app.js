@@ -57,5 +57,8 @@ route();
 // Offline cache. Not on localhost, where it would serve stale files during development.
 const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocal) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => { reg.update().catch(() => {}); }).catch(() => {});
+  // A new version took over: reload once so the screen matches the new files.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded) return; reloaded = true; location.reload(); });
 }
