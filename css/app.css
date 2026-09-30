@@ -427,3 +427,8 @@ td.num, th.num { text-align: right; }
 .howto:active { background: var(--bg-band); }
 .hero.floor .topbar .back { background: none; border: 0; padding: 0; }
 .swap { margin: 6px 0 10px; }
+
+.chip { font-size: 14px; font-weight: 700; color: var(--ink-2); padding: 7px 12px; border: 1px solid var(--rule-strong); border-radius: 999px; background: var(--field); }
+.chip.on { background: var(--pin); border-color: var(--pin); color: var(--pin-ink); }
+.painrow { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.note .actions.inline { margin-bottom: 0; }

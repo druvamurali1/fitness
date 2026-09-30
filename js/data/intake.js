@@ -102,3 +102,5 @@ export const CAUTIONS = [
 
 export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export const PAIN_JOINTS = { knee: 'Knees', lower_back: 'Lower back', shoulder: 'Shoulders', elbow: 'Elbows', wrist: 'Wrists', neck: 'Neck' };

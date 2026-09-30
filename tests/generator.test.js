@@ -134,3 +134,23 @@ test('no bench and no machine: the chest slot gets a floor press, not a push-up'
   const p2 = barOnly.workouts[0].exercises.find(e => e.role === 'secondary');
   assert.equal(p2.exerciseId, 'barbell_floor_press');
 });
+
+test('stalls, lighter loads, lighter-week timing and recurring pain', async () => {
+  const { isStalled, lighterLoad, needsLighterWeek, recurringPain } = await import('../js/generator.js');
+  const ex = { startLoadLb: 45, incrementLb: 10, sets: 3, repMin: 6, repMax: 8, loadType: 'barbell' };
+  const miss = w => ({ weightLb: w, sets: [{ reps: 6, done: true }, { reps: 6, done: true }, { reps: 5, done: true }] });
+  const hit = w => ({ weightLb: w, sets: [{ reps: 8, done: true }, { reps: 8, done: true }, { reps: 8, done: true }] });
+  assert.equal(isStalled(ex, [miss(95), miss(95), miss(95)]), true);
+  assert.equal(isStalled(ex, [miss(85), miss(95), miss(95)]), false);
+  assert.equal(isStalled(ex, [miss(95), hit(95), miss(95)]), false);
+  assert.equal(lighterLoad(135, 'barbell'), 95);
+  assert.equal(lighterLoad(50, 'barbell'), 45);
+  assert.equal(lighterLoad(30, 'dumbbell'), 20);
+  const plan = { mode: 'plan', createdAt: '2026-08-01' };
+  const sessions = Array.from({ length: 14 }, (_, i) => ({ completed: true, date: `2026-08-${String(2 + i * 2).padStart(2, '0')}` }));
+  assert.ok(needsLighterWeek({ plan, sessions, stalledCount: 0, today: '2026-09-20' }));
+  assert.equal(needsLighterWeek({ plan, sessions, stalledCount: 0, today: '2026-08-20' }), null);
+  assert.ok(needsLighterWeek({ plan, sessions: [], stalledCount: 2, today: '2026-08-10' }));
+  assert.equal(needsLighterWeek({ plan: { mode: 'free' }, sessions, stalledCount: 5, today: '2026-09-20' }), null);
+  assert.deepEqual(recurringPain([{ completed: true, pain: ['knee'] }, { completed: true, pain: [] }, { completed: true, pain: ['knee', 'wrist'] }]), ['knee']);
+});

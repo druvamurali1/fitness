@@ -170,6 +170,7 @@ function progressionRules(p) {
       : 'First two sessions of each workout: find your weights. Start with the suggested load and stop each set with about 3 reps in the tank.',
     'Rest 2 minutes after the main lift, 90 seconds after the second and third, 60 seconds after the rest. The timer runs it.',
     'Bodyweight and timed work: when you hit the top of the range on every set, make it harder next time (slower, a pause at the bottom, or the harder variation in the cues).',
+    'Every six weeks or so, or when two lifts have stalled for three sessions, the app suggests a lighter week: same workouts, seventy percent of the weight, two sets. Take it. That is when the next jump comes from.',
   ];
 }
 
@@ -306,3 +307,46 @@ export function freePlan(profile, { today } = {}) {
 }
 
 function clampNum(v, lo, hi, dflt) { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt; }
+
+// ── Stalls and the lighter week ──────────────────────────────────
+// A lift has stalled when the last three sessions were at the same weight and
+// none of them hit the top of the range on every set.
+export function isStalled(planEx, history) {
+  if (planEx.startLoadLb == null) return false;
+  const done = history.filter(h => h.sets.some(x => x.done)).slice(-3);
+  if (done.length < 3) return false;
+  const w = done[0].weightLb;
+  if (!done.every(h => h.weightLb === w)) return false;
+  return done.every(h => !(h.sets.length >= planEx.sets && h.sets.every(x => x.done && x.reps >= planEx.repMax)));
+}
+
+// Seventy percent of the working weight, on the gym's plate steps, never below the empty bar.
+export function lighterLoad(lb, loadType) {
+  if (lb == null) return null;
+  const step = loadType === 'barbell' ? 5 : 5;
+  const floor = loadType === 'barbell' ? 45 : 0;
+  return Math.max(floor, Math.round((lb * 0.7) / step) * step);
+}
+
+// When to suggest a lighter week: two or more main or secondary lifts stalled,
+// or six weeks of at least two sessions since the plan started or the last one.
+export function needsLighterWeek({ plan, sessions, stalledCount, today, since }) {
+  if (plan.mode !== 'plan') return null;
+  if (stalledCount >= 2) return `${stalledCount} lifts have stopped moving.`;
+  const start = since || plan.createdAt;
+  const weeks = Math.floor((new Date(today) - new Date(start)) / (7 * 86400000));
+  if (weeks >= 6) {
+    const hard = sessions.filter(s => s.completed && !s.deload && s.date >= start).length;
+    if (hard >= 10) return `Six weeks of steady lifting since ${start}.`;
+  }
+  return null;
+}
+
+// Pain reported at the end of sessions: the same joint twice in the last three
+// sessions becomes a contraindication the plan is rebuilt around.
+export function recurringPain(sessions) {
+  const recent = sessions.filter(s => s.completed).slice(-3);
+  const counts = {};
+  recent.forEach(s => (s.pain || []).forEach(j => { counts[j] = (counts[j] || 0) + 1; }));
+  return Object.keys(counts).filter(j => counts[j] >= 2);
+}

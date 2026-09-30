@@ -115,7 +115,7 @@ export function addCustomExercise(name) {
 
 export function startSession(workout, source = 'main') {
   const d = load();
-  const s = { id: uid(), date: isoDate(), workoutId: workout.id, source, startedAt: Date.now(), finishedAt: null, completed: false,
+  const s = { id: uid(), date: isoDate(), workoutId: workout.id, source, startedAt: Date.now(), finishedAt: null, completed: false, deload: deloadActive(isoDate()), pain: [],
     checklist: { warmup: false, cooldown: false, protein: false },
     items: Object.fromEntries(workout.exercises.map(e => [e.exerciseId, { weightLb: null, sets: Array.from({ length: e.sets }, () => ({ reps: null, done: false })) }])) };
   d.sessions.push(s); save(); return s;
@@ -135,9 +135,10 @@ export function finishSession(id) { update(d => { const s = d.sessions.find(x =>
 export function abandonSession(id) { update(d => { const i = d.sessions.findIndex(x => x.id === id); if (i >= 0) d.sessions.splice(i, 1); }); }
 
 // History of one exercise across completed sessions, oldest first.
-export function exerciseHistory(exerciseId) {
-  return load().sessions.filter(s => s.completed && s.items[exerciseId]).map(s => ({ date: s.date, sessionId: s.id, ...s.items[exerciseId] }));
+export function exerciseHistory(exerciseId, { includeDeload = false } = {}) {
+  return load().sessions.filter(s => s.completed && s.items[exerciseId] && (includeDeload || !s.deload)).map(s => ({ date: s.date, sessionId: s.id, ...s.items[exerciseId] }));
 }
+export function deloadActive(today) { const d = load(); return !!(d.deload && today >= d.deload.from && today <= d.deload.until); }
 
 // ── Days (diet, bodyweight, waist) ──────────────────────────────
 

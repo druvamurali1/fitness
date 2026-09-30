@@ -3,7 +3,8 @@
 // one tap away. Also the morning weigh-in.
 
 import * as store from '../store.js';
-import { suggestNext, swapped } from '../generator.js';
+import { suggestNext, swapped, isStalled, lighterLoad, needsLighterWeek, recurringPain, generatePlan } from '../generator.js';
+import { PAIN_JOINTS } from '../data/intake.js';
 import { DAY_NAMES } from '../data/intake.js';
 import { HOWTO, setsText } from '../data/howto.js';
 import { EXERCISES } from '../data/exercises.js';
@@ -37,6 +38,10 @@ export function renderToday(root, ctx) {
       store.swapExercise(session.id, from, to, sug.loadLb, sug); },
     add_set: el => { const ex = el.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets.push({ reps: null, done: false }); }); },
     remove_ex: el => { const ex = el.dataset.ex; store.update(x => { const s = x.sessions.find(s => s.id === session.id); delete s.items[ex]; s.order = s.order.filter(k => k !== ex); }); },
+    start_deload: () => { const from = isoDate(); store.update(x => { x.deload = { from, until: addDays(from, 6) }; }); },
+    snooze_deload: () => { const from = addDays(isoDate(), -7); store.update(x => { x.deload = { from, until: addDays(isoDate(), -1), snoozed: true }; }); },
+    dismiss_notice: () => store.update(x => { x.notice = null; }),
+    pain: el => { const j = el.dataset.joint; store.update(x => { const s = x.sessions.find(s => s.id === session.id); s.pain ||= []; if (j === 'none') s.pain = []; else if (s.pain.includes(j)) s.pain = s.pain.filter(k => k !== j); else s.pain.push(j); s.painAsked = true; }); },
     got_it: () => { ui2.introStep = 0; ui2.introAll = false; store.update(x => { x.settings.sawIntro = true; }); },
     intro_go: el => { ui2.introStep = Number(el.dataset.i); renderToday(root, ctx); window.scrollTo(0, 0); },
     intro_all: () => { ui2.introAll = true; renderToday(root, ctx); window.scrollTo(0, 0); },
@@ -61,7 +66,9 @@ export function renderToday(root, ctx) {
       const it = store.load().sessions.find(s => s.id === session.id).items[ex];
       if (it.sets[Number(i)].done) { const last = Number(i) === it.sets.length - 1; if (!last) startTimer(planEx.restSeconds); else { startTimer(planEx.restSeconds); const w = currentWorkout(plan, session); const nxt = nextUnfinished(store.load().sessions.find(s => s.id === session.id), w); if (nxt) ui.expanded.add(nxt); } }
       renderToday(root, ctx); },
-    finish: () => { if (!session) return; const doneSets = countDone(session); if (doneSets === 0 && !confirm('No sets logged. Finish anyway? It will count as a completed session.')) return; stopTimer(); store.finishSession(session.id); ui.expanded.clear(); ui.step = null; },
+    finish: () => { if (!session) return; const doneSets = countDone(session); if (doneSets === 0 && !confirm('No sets logged. Finish anyway? It will count as a completed session.')) return;
+      if (!session.painAsked && session.source !== 'free') { ui.mode = 'guided'; ui.step = 'finish'; renderToday(root, ctx); root.querySelector('.painrow')?.scrollIntoView({ block: 'center' }); return; }
+      stopTimer(); store.finishSession(session.id); ui.expanded.clear(); ui.step = null; afterFinish(d); },
     discard: () => { if (confirm('Throw this session away? Nothing from it will be saved.')) { stopTimer(); store.abandonSession(session.id); ui.step = null; } },
     cardio_done: () => { const cur = store.day(today).cardio; store.setDay(today, { cardio: !cur }); },
   });
@@ -126,6 +133,7 @@ function idleView(d, units, today) {
   const dayRec = store.day(today);
   const learning = isLearning(d, next);
 
+  const notices = idleNotices(d, today, next);
   let headline, sub;
   if (doneToday) { headline = 'Done'; sub = 'Session logged. Eat. The next one is ' + (nextDay ? DAY_NAMES[dayOfWeek(nextDay)] : 'soon') + '.'; }
   else if (isLift) { headline = next.focus; sub = `Workout ${next.id}, your session ${n}. Today.`; }
@@ -138,6 +146,7 @@ function idleView(d, units, today) {
   <p class="sub">${esc(sub)}</p>
   ${doneToday ? '' : `<button class="btn primary block" data-action="start" data-src="main">Start workout ${esc(next.id)}</button>`}
 </header>
+${notices}
 ${missedWeek(d, today)}
 ${learning && !doneToday ? `<div class="note"><p><b>Learning session.</b> Light weight, good form, read each exercise page before you try it. The numbers do not matter yet.</p></div>` : ''}
 <div class="actions" style="margin-top:8px">
@@ -147,6 +156,25 @@ ${learning && !doneToday ? `<div class="note"><p><b>Learning session.</b> Light 
 </div>
 ${weighRow(dayRec, units, today)}
 ${preview(next, d, units)}`;
+}
+
+// Notices above the Today screen: a plan change after reported pain, a lighter
+// week in progress, or the suggestion to start one.
+function idleNotices(d, today, next) {
+  const out = [];
+  if (d.notice) out.push(`<div class="note"><p>${esc(d.notice)}</p><button class="link" data-action="dismiss_notice">Got it</button></div>`);
+  if (store.deloadActive(today)) {
+    const day = Math.min(7, Math.max(1, Math.round((new Date(today) - new Date(d.deload.from)) / 86400000) + 1));
+    out.push(`<div class="note"><p><b>Lighter week, day ${day} of 7.</b> Same workouts, seventy percent of the weight, two sets each. This is planned recovery, not a setback. Normal weights come back next week.</p></div>`);
+    return out.join('');
+  }
+  if (d.plan.mode === 'plan') {
+    const lifts = d.plan.workouts.flatMap(w => w.exercises).filter(e => e.role === 'main' || e.role === 'secondary');
+    const stalled = lifts.filter(e => isStalled(e, store.exerciseHistory(e.exerciseId)));
+    const why = needsLighterWeek({ plan: d.plan, sessions: d.sessions, stalledCount: stalled.length, today, since: d.deload?.until });
+    if (why) out.push(`<div class="note warn"><p><b>Time for a lighter week.</b> ${esc(why)}${stalled.length ? ' Stalled: ' + esc(stalled.map(e => e.name).join(', ')) + '.' : ''} Seven days at seventy percent and two sets, then the weights start moving again. Every good program has one.</p><div class="actions inline" style="margin:8px 0 0"><button class="btn small" data-action="start_deload">Start the lighter week</button><button class="link" data-action="snooze_deload">Not this week</button></div></div>`);
+  }
+  return out.join('');
 }
 
 function isLearning(d, w) { return d.sessions.filter(s => s.completed && s.workoutId === w.id && s.source === 'main').length < 2; }
@@ -214,7 +242,8 @@ function prefill(s, w, d) {
     const h = store.exerciseHistory(e.exerciseId);
     const sug = suggestNext(e, h);
     const it = s.items[e.exerciseId];
-    it.weightLb = sug.loadLb; it.suggested = sug;
+    it.weightLb = s.deload ? lighterLoad(sug.loadLb, e.loadType) : sug.loadLb; it.suggested = s.deload ? { loadLb: it.weightLb, reason: 'deload' } : sug;
+    if (s.deload) it.sets = it.sets.slice(0, 2);
     const last = h.length ? h[h.length - 1] : null;
     it.sets.forEach((set, i) => { set.reps = last && last.sets[i] && last.sets[i].done ? last.sets[i].reps : null; });
   }
@@ -222,10 +251,11 @@ function prefill(s, w, d) {
 function currentWorkout(plan, s) {
   if (s.source === 'free') return { id: 'free', name: 'Your workout', focus: 'Your workout', exercises: (s.order || []).map(id => freePlanEx(id, s)) };
   const w = (s.source === 'fallback' ? plan.fallback : plan.workouts).find(w => w.id === s.workoutId);
-  if (!s.swaps || !Object.keys(s.swaps).length) return w;
+  const lighter = ex => s.deload ? { ...ex, sets: Math.min(2, ex.sets) } : ex;
+  if (!s.swaps || !Object.keys(s.swaps).length) return s.deload ? { ...w, exercises: w.exercises.map(lighter) } : w;
   // Follow swap chains (A swapped to B, B swapped to C) to the exercise actually in play.
   const resolve = e => { let cur = e; const seen = new Set(); while (s.swaps[cur.exerciseId] && !seen.has(cur.exerciseId)) { seen.add(cur.exerciseId); cur = swapped(cur, s.swaps[cur.exerciseId]); } return cur; };
-  return { ...w, exercises: w.exercises.map(resolve) };
+  return { ...w, exercises: w.exercises.map(e => lighter(resolve(e))) };
 }
 function findPlanEx(plan, s, exId) { return currentWorkout(plan, s).exercises.find(e => e.exerciseId === exId); }
 // In self-driven mode an exercise has no target range; sets grow as you add them.
@@ -257,13 +287,13 @@ function sessionView(d, s, units) {
 <header class="hero floor live">
   <div class="hero-date">${fmtDate(s.date)}, ${mins} min in</div>
   <div class="display-words">${esc(w.focus)}</div>
-  <p class="sub">Workout ${esc(w.id)}. ${done} of ${total} sets logged.${learning ? ' Learning session: light and careful.' : ''}</p>
+  <p class="sub">Workout ${esc(w.id)}. ${done} of ${total} sets logged.${s.deload ? ' Lighter week: seventy percent, two sets.' : learning ? ' Learning session: light and careful.' : ''}</p>
   <div class="stack" aria-hidden="true">${Array.from({ length: total }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>
 </header>
 <div class="seg modeswitch"><button aria-pressed="${ui.mode === 'guided'}" data-action="mode" data-mode="guided">One at a time</button><button aria-pressed="${ui.mode === 'list'}" data-action="mode" data-mode="list">Whole workout</button></div>
 ${ui.mode === 'guided' ? guided(d, s, w, units) : list(d, s, w, units)}
 <div class="actions" style="margin-top:28px">
-  ${ui.mode === 'list' ? `<button class="btn primary block" data-action="finish">Finish session</button>` : ''}
+  ${ui.mode === 'list' ? `${painRow(s)}<button class="btn primary block" data-action="finish">Finish session</button>` : ''}
   <button class="link" data-action="discard">Discard this session</button>
 </div>`;
 }
@@ -285,6 +315,7 @@ function guided(d, s, w, units) {
     return `${top}<section class="stepcard">
       <div class="wo-head"><span class="tag big">✓</span><div><span class="small muted">Last</span><h2 class="title" style="margin-top:2px">Finish up</h2></div></div>
       ${left.length ? `<p class="warn small">Not logged: ${left.map(e => esc(e.name)).join(', ')}. Fine if you skipped them; go back if you forgot to tap.</p>` : ''}
+      ${painRow(s)}
       <div class="log">
         <div class="logrow"><div class="logl"><b>Cool down</b><span>${plan.cooldown.map(x => esc(x.text)).join(' ')}</span></div><button class="pip big ${s.checklist.cooldown ? 'on' : ''}" aria-pressed="${s.checklist.cooldown}" data-action="check" data-key="cooldown" aria-label="Cool-down done">${s.checklist.cooldown ? '✓' : ''}</button></div>
         <div class="logrow"><div class="logl"><b>Protein</b><span>${esc(plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.')}</span></div><button class="pip big ${s.checklist.protein ? 'on' : ''}" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein" aria-label="Protein done">${s.checklist.protein ? '✓' : ''}</button></div>
@@ -342,7 +373,8 @@ function setGrid(e, it, units, d) {
   const h = store.exerciseHistory(e.exerciseId); const last = h.length ? h[h.length - 1] : null;
   const lastText = last ? `Last time: ${last.weightLb != null ? loadText(last.weightLb, units, e.loadType) + ', ' : ''}${last.sets.filter(x => x.done).map(x => x.reps).join(', ')} ${e.measure === 'seconds' ? 'seconds' : 'reps'}.` : 'First time doing this.';
   const sug = it.suggested || {};
-  const sugLine = e.free ? ''
+  const sugLine = sug.reason === 'deload' ? 'Lighter week: seventy percent, two sets, nothing added. Move well, leave the gym feeling fresh.'
+    : e.free ? ''
     : sug.reason === 'up' ? `Up from last time, because every set hit ${e.repMax}.`
     : sug.reason === 'down' ? 'Two sessions under the range, so ten percent off. Build back.'
     : sug.reason === 'start' ? 'A guess at a starting weight. If a set feels like you could do 5 more, add weight next set.'
@@ -372,6 +404,28 @@ function swapBlock(e, s) {
     <button class="link" data-action="${open ? 'swap_close' : 'swap_open'}" data-ex="${e.exerciseId}">${open ? 'Keep ' + esc(e.name) : 'Busy or missing? Swap it'}</button>
     ${open ? `<ul class="rows tight" style="margin-top:6px">${e.alts.map((a, i) => `<li class="row"><button class="row-head" style="grid-template-columns:34px 1fr auto" data-action="swap" data-from="${e.exerciseId}" data-to="${a.id}"><span class="tag">${i + 1}</span><span class="row-title">${esc(a.name)}</span><span class="row-meta">${i === e.alts.length - 1 && EXERCISES[a.id]?.equipment.length === 0 ? 'no equipment' : 'same movement'}</span></button></li>`).join('')}</ul>` : ''}
   </div>`;
+}
+
+// After a session: the same joint reported twice in the last three sessions
+// becomes part of the profile and the plan is rebuilt around it.
+function afterFinish(d) {
+  if (d.plan.mode !== 'plan') return;
+  const joints = recurringPain(store.load().sessions).filter(j => !(d.profile.pain || []).includes(j));
+  if (!joints.length) return;
+  store.update(x => {
+    x.profile = { ...x.profile, pain: [...(x.profile.pain || []), ...joints] };
+    const fresh = generatePlan(x.profile);
+    if (fresh.blocked) return;
+    fresh.createdAt = x.plan.createdAt; x.plan = fresh;
+    x.notice = `You have flagged ${joints.map(j => PAIN_JOINTS[j] || j).join(' and ')} after two of your last three sessions. The plan now avoids exercises that load ${joints.length > 1 ? 'those joints' : 'that joint'} and has swapped in alternatives. If it keeps hurting outside the gym, see a physio; the app cannot diagnose anything.`;
+  });
+}
+
+// "Anything hurt?" Asked once per session, on the finish card.
+function painRow(s) {
+  const pain = s.pain || [];
+  return `<div class="painrow"><div class="logl"><b>Anything hurt?</b><span>Joints, not muscles. Muscle soreness is normal.</span></div>
+  <div class="chips" style="margin:8px 0 0">${[['none', 'No'], ...Object.entries(PAIN_JOINTS)].map(([k, l]) => `<button class="chip ${k === 'none' ? (s.painAsked && !pain.length ? 'on' : '') : (pain.includes(k) ? 'on' : '')}" data-action="pain" data-joint="${k}">${esc(l)}</button>`).join('')}</div></div>`;
 }
 
 // ── Self-driven mode ────────────────────────────────────────────

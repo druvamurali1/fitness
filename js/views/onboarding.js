@@ -29,6 +29,7 @@ export function renderOnboarding(root, ctx) {
     continue: el => { store.switchPerson(el.dataset.id); ctx.done(); },
     resume: () => { s.screen = 'step'; s.error = null; rerender(root, ctx, { top: true }); },
     free: () => { s.screen = 'free'; s.error = null; s.f = s.f || { units: { load: 'lb', body: 'kg' }, daysPerWeek: 3, dietType: 'nonveg' }; rerender(root, ctx, { top: true }); },
+    free_trained: el => { s.f.trained = el.dataset.value === 'yes'; rerender(root, ctx); },
     free_choose: el => { s.f[el.dataset.key] = el.dataset.value; rerender(root, ctx); },
     free_unit: el => { const [scope, val] = el.dataset.value.split(':'); s.f.units[scope] = val; rerender(root, ctx); },
     free_build: () => {
@@ -172,6 +173,8 @@ function freeSetup() {
   <div class="display-words">Four things</div>
   <p class="sub">Enough to count your week and set a protein target. Change any of it later in the Plan tab.</p>
 </header>
+<div class="field"><div class="lab">Have you trained with weights before?</div><div class="seg"><button type="button" aria-pressed="${f.trained === true}" data-action="free_trained" data-value="yes">Yes</button><button type="button" aria-pressed="${f.trained === false}" data-action="free_trained" data-value="no">No</button></div>
+${f.trained === false ? `<div class="note warn" style="margin-top:12px"><p><b>Then a plan will serve you better.</b> Without one, most people who are new to weights end up doing curls and cardio for three months. The interview takes five minutes and you can switch to running your own later, keeping every log.</p><button class="btn small" data-action="start">Build me a plan instead</button></div>` : ''}</div>
 <div class="field"><label for="fname">Your name</label><input class="input" id="fname" data-ffield="name" value="${esc(f.name ?? '')}" autocomplete="off" maxlength="40"></div>
 <div class="field"><label for="fw">Current weight</label><div class="inline-units"><input class="input" type="number" inputmode="decimal" id="fw" data-ffield="weight" value="${shownW}">
   <div class="seg"><button type="button" aria-pressed="${u.body === 'kg'}" data-action="free_unit" data-value="body:kg">kg</button><button type="button" aria-pressed="${u.body === 'lb'}" data-action="free_unit" data-value="body:lb">lb</button></div></div>
