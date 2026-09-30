@@ -10,14 +10,14 @@ Status (end of 2026-09-30): live at https://druvamurali1.github.io/fitness/ and 
 
 ## Where we left off (read this first tomorrow)
 
-Built and live today, in order: interview and generator; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; labelled Done buttons.
+Built and live today, in order: interview and generator; (later) a 161-exercise library with muscle and equipment filters, notes, personal records, finish summary, measurements, routines; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; labelled Done buttons.
 
 Open items, none started:
 - Druva has not yet trained with the app. First real feedback comes after Friday 2 Oct. Expect wording and layout notes from the gym floor.
 - Staged diet (trainer's recommendation, not in the app): weeks 1 and 2 add only the shake and the 4:30 protein; breakfast from week 3. The app still shows the full six-meal day from day one.
 - Deadlift at 3 × 5 as an option if his back rounds at reps 7 and 8. Decide after his first two sessions.
 - Sleep rule (under 6.5 h: two sets, no added weight; under 6 h: walk instead, not a miss) is advice only, not in the app.
-- Eight of 45 exercise videos are from less-known channels (see `js/data/videos.js`); fine for form, could be upgraded.
+- All 161 exercises have a verified video; a few dozen are from less-known channels (see `js/data/videos.js`), fine for form. Add new videos with `python3 scripts/add-videos.py <candidates.json>`, which checks each id against YouTube before merging.
 - The in-app test browser holds test people "Druva" and "Guest" with fake sessions; it is not his phone.
 - `docs/program.md` and `docs/diet.md` are local only (docs/ is git-ignored).
 
