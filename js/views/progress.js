@@ -2,7 +2,7 @@
 // one-month comparison.
 
 import * as store from '../store.js';
-import { lineChart } from '../charts.js';
+import { lineChart, bindCharts } from '../charts.js';
 import { isoDate, weekStart, addDays, mean, fmtShort, fmtNum, displayLoad, kgToLb, e1rm } from '../util.js';
 import { esc, delegate, bodyText, loadText, pageBar } from './ui.js';
 import { EXERCISES } from '../data/exercises.js';
@@ -46,20 +46,15 @@ ${change != null ? `<p class="small muted" style="margin:0 0 4px">${change >= 0 
 
 <h2 class="h2" style="margin-top:14px">Lifts</h2>
 <div class="field" style="margin-top:0"><label for="liftsel" class="sr">Exercise</label><select id="liftsel" class="input" data-change="lift">${lifts.map(l => `<option value="${l.exerciseId}" ${l.exerciseId === ui.lift ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
-${hist.length ? `<div class="stats">
-  <div><b>${loaded ? esc(loadText(lastH.weightLb, units, lift.loadType).replace(/ (lb|kg)$/, '')) : lastH.reps}<span class="of">${loaded ? units.load : (lift.measure === 'seconds' ? 's' : 'reps')}</span></b><span>last time, × ${lastH.reps}${liftChange != null && liftChange !== 0 ? `, ${liftChange > 0 ? '+' : ''}${fmtNum(liftChange, 1)} since ${fmtShort(firstH.date)}` : ''}</span></div>
-  <div><b>${loaded ? esc(loadText(best.weightLb, units, lift.loadType).replace(/ (lb|kg)$/, '')) : best.reps}<span class="of">${loaded ? units.load : ''}</span></b><span>best set, × ${best.reps} on ${fmtShort(best.date)}</span></div>
-  <div><b>${hist.length}</b><span>time${hist.length === 1 ? '' : 's'} logged</span></div>
-</div>` : ''}
 ${lineChart(pts, { unit: loaded ? units.load : (lift.measure === 'seconds' ? 's' : 'reps'), id: 'lift' })}
-${hist.length ? `<table><thead><tr><th>Date</th><th class="num">Best set</th><th class="num">${loaded && lift.measure !== 'seconds' ? 'Est. 1 rep max' : ''}</th></tr></thead><tbody>${hist.slice().reverse().slice(0, 6).map(h => `<tr><td>${fmtShort(h.date)}</td><td class="num">${loaded ? loadText(h.weightLb, units, lift.loadType) + ' × ' : ''}${h.reps}${lift.measure === 'seconds' ? ' s' : ''}</td><td class="num">${loaded && lift.measure !== 'seconds' ? loadText(e1rm(h.weightLb, h.reps), units, lift.loadType) : ''}</td></tr>`).join('')}</tbody></table>` : `<p class="small muted">Finish a workout with ${esc(lift.name)} in it and the best set lands here.</p>`}
+${hist.length ? `<table><thead><tr><th>Date</th><th class="num">Best set</th><th class="num">${loaded && lift.measure !== 'seconds' ? 'Est. 1 rep max' : ''}</th></tr></thead><tbody>${hist.slice().reverse().slice(0, 6).map(h => `<tr><td>${fmtShort(h.date)}</td><td class="num">${loaded ? loadText(h.weightLb, units, lift.loadType) + ' × ' : ''}${h.reps}${lift.measure === 'seconds' ? ' s' : ''}</td><td class="num">${loaded && lift.measure !== 'seconds' ? loadText(Math.round(e1rm(h.weightLb, h.reps)), units, lift.loadType) : ''}</td></tr>`).join('')}</tbody></table>` : `<p class="small muted">Finish a workout with ${esc(lift.name)} in it and the best set lands here.</p>`}
 
 <h2 class="h2">Personal records</h2>
 ${prList(d, lifts, units)}
 
 <h2 class="h2">Bodyweight</h2>
 <p class="small muted" style="margin-top:-4px">Weekly averages. Single mornings bounce around; the average does not.${plan.diet.weeklyRateKg[0] !== plan.diet.weeklyRateKg[1] ? ` Aim: ${rateText(plan.diet.weeklyRateKg, units)} a week.` : ''}${plan.diet.weightTargetKg ? ` Goal ${bodyText(plan.diet.weightTargetKg, units)}.` : ''}</p>
-${weeks.length ? lineChart(weeks.map(w => ({ date: w.start, y: w.avg, note: `${w.n} weigh-ins` })), { unit: units.body, id: 'bw' }) : `<p class="empty">Weigh yourself on the Today tab each morning. The first weekly average shows after one weigh-in.</p>`}
+${weeks.length ? lineChart(weeks.map(w => ({ date: w.start, y: Math.round(w.avg * 10) / 10, note: `week average, ${w.n} weigh-in${w.n === 1 ? '' : 's'}` })), { unit: units.body, id: 'bw' }) : `<p class="empty">Weigh yourself on the Today tab each morning. The first weekly average shows after one weigh-in.</p>`}
 ${weeks.length > 1 ? `<table><thead><tr><th>Week of</th><th class="num">Average</th><th class="num">Mornings</th><th class="num">Change</th></tr></thead><tbody>${weeks.slice().reverse().slice(0, 8).map((w, i, arr) => { const prev = arr[i + 1]; const ch = prev ? w.avg - prev.avg : null; return `<tr><td>${fmtShort(w.start)}</td><td class="num">${fmtNum(w.avg, 1)}</td><td class="num">${w.n}</td><td class="num">${ch == null ? '' : (ch > 0 ? '+' : '') + fmtNum(ch, 1)}</td></tr>`; }).join('')}</tbody></table>` : ''}
 
 <h2 class="h2">Measurements</h2>
@@ -80,7 +75,7 @@ ${photoBlock(d)}
   });
   root.querySelector('[data-change="lift"]').onchange = e => { ui.lift = e.target.value; renderProgress(root, ctx); };
   bindPhoto(root);
-  bindTooltips(root);
+  bindCharts(root);
 }
 
 // Best ever set per exercise, most recent first.
@@ -146,10 +141,3 @@ function shrink(file, max) {
   return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.8)); URL.revokeObjectURL(img.src); }; img.src = URL.createObjectURL(file); });
 }
 
-function bindTooltips(root) {
-  root.querySelectorAll('.chartwrap').forEach(wrap => {
-    let tip = null;
-    wrap.addEventListener('pointerover', e => { const c = e.target.closest('.pt.hit'); if (!c) return; const t = c.querySelector('title')?.textContent; if (!t) return; tip ||= Object.assign(document.createElement('div'), { className: 'tip' }); tip.textContent = t; wrap.appendChild(tip); const r = wrap.getBoundingClientRect(), b = c.getBoundingClientRect(); tip.style.left = (b.left - r.left + b.width / 2) + 'px'; tip.style.top = (b.top - r.top) + 'px'; });
-    wrap.addEventListener('pointerout', e => { if (e.target.closest('.pt.hit') && tip) tip.remove(); });
-  });
-}

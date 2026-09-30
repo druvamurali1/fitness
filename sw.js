@@ -1,7 +1,7 @@
 // Offline cache. Network first when there is signal, so updates show on the
 // next open; the cached copy only serves when the network fails. Bump CACHE
 // when files change so old copies are dropped.
-const CACHE = 'gym-plan-v28';
+const CACHE = 'gym-plan-v30';
 const FILES = ['./', './index.html', './css/app.css', './manifest.webmanifest', './assets/icon.svg',
   './js/app.js', './js/util.js', './js/store.js', './js/generator.js', './js/charts.js',
   './js/data/exercises.js', './js/data/programs.js', './js/data/diets.js', './js/data/intake.js', './js/data/profiles.js', './js/data/howto.js', './js/data/howto-more.js', './js/data/exercises-more.js', './js/data/videos.js',

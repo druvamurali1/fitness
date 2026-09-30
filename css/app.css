@@ -210,16 +210,6 @@ table { width: 100%; border-collapse: collapse; font-size: 15px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 th { font-weight: 700; color: var(--ink-2); font-size: 13px; }
 td.num, th.num { text-align: right; }
-.chart { width: 100%; height: auto; display: block; margin: 8px 0; overflow: visible; }
-.chart .grid line { stroke: var(--rule); stroke-width: 1; }
-.chart .axis text { fill: var(--muted); font-size: 12px; font-family: var(--font); }
-.chart .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.chart .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 2; r: 5; }
-.chart .pt.hit { fill: transparent; stroke: transparent; r: 14; }
-.chart .lab { fill: var(--ink); font-size: 13px; font-weight: 700; font-family: var(--font); }
-.chart .xhair { stroke: var(--rule-strong); stroke-dasharray: 3 3; }
-.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 10px; border-radius: var(--radius); font-size: 13px; white-space: nowrap; transform: translate(-50%, -110%); }
-.chartwrap { position: relative; }
 .empty { padding: 22px 0; color: var(--muted); border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
 .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .compare img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: var(--radius); background: var(--bg-band); }
@@ -551,3 +541,23 @@ td.num, th.num { text-align: right; }
 .wk-nav button { font-size: 22px; line-height: 1; width: 36px; height: 34px; }
 .wk-nav button:disabled { opacity: .3; }
 .sbar-stats b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Charts */
+.chartwrap { margin: 14px 0 6px; }
+.chart-read { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.chart-read > div { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.chart-read b { font-size: 26px; font-variation-settings: 'opsz' 40, 'wdth' 85, 'wght' 800; line-height: 1; }
+.chart-read span[data-r="d"], .chart-read > div > span { font-size: 14px; color: var(--muted); }
+.chart { width: 100%; height: auto; display: block; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.chart .grid line { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .axis text { fill: var(--muted); font-size: 12px; font-family: var(--font); }
+.chart .area { fill: color-mix(in srgb, var(--pin) 22%, transparent); stroke: none; }
+.chart .line { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart .pt { fill: var(--bg); stroke: var(--ink); stroke-width: 2; }
+.chart .pt.last { fill: var(--pin); }
+.chart .guide { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .active { fill: none; stroke: var(--ink); stroke-width: 2; }
+.chart .hit { fill: transparent; cursor: crosshair; }
+.small-seg { flex: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chart .area { fill: color-mix(in srgb, var(--pin) 12%, transparent); } }
+:root[data-theme="dark"] .chart .area { fill: color-mix(in srgb, var(--pin) 12%, transparent); }

@@ -9,7 +9,7 @@ import * as store from '../store.js';
 import { esc, delegate } from './ui.js';
 import { startText, loadShort } from './words.js';
 import { fmtNum, fmtShort, fmtDate, displayLoad, isoDate, addDays } from '../util.js';
-import { lineChart } from '../charts.js';
+import { lineChart, bindCharts } from '../charts.js';
 import { loadText } from './ui.js';
 
 const CHEV = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -69,6 +69,7 @@ ${inPlan && inPlan.alts && inPlan.alts.length ? `<h2 class="h3">If it's taken, o
     del_photo: () => { store.update(x => { if (x.equipmentPhotos) delete x.equipmentPhotos[key]; }); },
     play: el => { const wrap = el.closest('.video'); wrap.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0&modestbranding=1" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`; },
   });
+  bindCharts(root);
   const inp = root.querySelector('[data-change="gymphoto"]');
   if (inp) inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const dataUrl = await shrink(f, 720); ui.editing = null; store.update(x => { x.equipmentPhotos ||= {}; x.equipmentPhotos[key] = dataUrl; }); };
 }
@@ -118,9 +119,7 @@ function summaryTab(ex, id, inPlan, hist, loaded, units) {
 <p class="small muted" style="margin:2px 0 0">Primary: ${esc(ex.muscles.primary.join(', '))}${ex.muscles.secondary.length ? `. Also: ${esc(ex.muscles.secondary.join(', '))}` : ''}</p>
 ${inPlan ? `<p class="small" style="margin:6px 0 0">In workout ${esc(inPlan.workout.id)}: ${esc(setsText(inPlan))}. ${esc(startText(inPlan, units))}</p>` : ''}
 ${hist.length ? `
-<div class="ex-head-num"><b>${last ? `${fmtNum(last.y, 1)} ${unit}` : '–'}</b>${last ? `<span>${fmtShort(last.date)}</span>` : ''}
-  <span class="seg small-seg">${[['1m', '1 month'], ['3m', '3 months'], ['all', 'All time']].map(([k, l]) => `<button aria-pressed="${ui.range === k}" data-action="range" data-r="${k}">${l}</button>`).join('')}</span></div>
-${pts.length ? lineChart(pts, { unit, id: 'ex' }) : `<p class="empty">Nothing logged in this range.</p>`}
+${pts.length ? lineChart(pts, { unit, id: 'ex', right: `<span class="seg small-seg">${[['1m', '1M'], ['3m', '3M'], ['all', 'All']].map(([k, l]) => `<button aria-pressed="${ui.range === k}" data-action="range" data-r="${k}">${l}</button>`).join('')}</span>` }) : `<div class="chart-read"><div><b>–</b><span>Nothing in this range</span></div><span class="seg small-seg">${[['1m', '1M'], ['3m', '3M'], ['all', 'All']].map(([k, l]) => `<button aria-pressed="${ui.range === k}" data-action="range" data-r="${k}">${l}</button>`).join('')}</span></div>`}
 <div class="chips">${metrics.map(([k, l]) => `<button class="chip ${ui.metric === k ? 'on' : ''}" data-action="metric" data-m="${k}">${l}</button>`).join('')}</div>
 <h3 class="h3">Personal records</h3>
 <ul class="cmp">${prs.map(([k, v, dt]) => `<li><span>${esc(k)}</span><span class="muted">${fmtShort(dt)}</span><span><b>${esc(v)}</b></span></li>`).join('')}</ul>`
