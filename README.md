@@ -4,7 +4,11 @@ A personal-trainer web app. It interviews you the way a trainer would, builds a 
 
 No accounts, no server. Everything lives in the browser on the device you use it on. Export a backup from the Plan tab before switching phones.
 
-## Run it
+## Use it
+
+https://druvamurali1.github.io/fitness/ on a phone. Add it to the home screen; it works offline after the first load.
+
+## Run it locally
 
 ```bash
 npm start

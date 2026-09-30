@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal-trainer web app for Druva (the owner, a complete beginner to training). Claude acts as the trainer: it designed the intake interview, will design the program and diet from the answers, and builds the app that delivers and tracks them. The app must also onboard any other beginner from scratch through an in-app intake, but Druva's profile is the first and best-tested path.
 
-Status (2026-09-30): v0.1 built and walked through in the browser. Druva's intake answers are recorded in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md`. Equipment photos are in the repo root (`IMG_4262.HEIC` to `IMG_4271.HEIC`). Everything below is decided and should not be re-litigated without the owner asking.
+Status (2026-09-30): v0.1 built and walked through in the browser. Druva's intake answers are recorded in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md`. Equipment photos are in the folder root (`IMG_4262.HEIC` to `IMG_4271.HEIC`) but git-ignored. Everything below is decided and should not be re-litigated without the owner asking.
 
 ## Commands
 
@@ -15,7 +15,9 @@ npm start      # node serve.js 8080, then open http://localhost:8080
 npm test       # node --test tests/*.test.js (generator only, no browser needed)
 ```
 
-No build step, no dependencies. ES modules need a server; opening `index.html` from the filesystem will not work. `.claude/launch.json` has a `gym` config for the in-app browser preview. The service worker is skipped on localhost so edits show on reload; on any other host it caches everything, so bump `CACHE` in `sw.js` when shipping changes.
+No build step, no dependencies. ES modules need a server; opening `index.html` from the filesystem will not work.
+
+Hosted at https://druvamurali1.github.io/fitness/ from the public GitHub repository `druvamurali1/fitness` (GitHub Pages, `main` branch, root). Deploy is `git push`; Pages rebuilds in about a minute. Before every push: bump `CACHE` in `sw.js` so phones drop the old offline copy, and run `npm test`. The repository is public: `.gitignore` keeps the gym photos, `docs/` and `.claude/` out, and `js/data/profiles.js` must never carry health details, the "why now" text or personal notes. `.claude/launch.json` has a `gym` config for the in-app browser preview. The service worker is skipped on localhost so edits show on reload; on any other host it caches everything, so bump `CACHE` in `sw.js` when shipping changes.
 
 To test a screen quickly: open the app, choose "Load Druva's profile" on the welcome screen. To go home and test as another person: Plan tab, "Home: switch person or add someone". To start over: Plan tab, "Erase this person's data", or clear the `gym.people.v1` key in localStorage.
 
