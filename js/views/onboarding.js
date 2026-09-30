@@ -11,6 +11,8 @@ const state = { screen: 'welcome', step: 0, a: { units: { load: 'lb', body: 'kg'
 
 export function renderOnboarding(root, ctx) {
   const s = state;
+  const m = /^#setup\/([a-z0-9_-]+)$/i.exec(location.hash || '');
+  if (m && PROFILES[m[1]]) { location.hash = '#today'; finish({ ...PROFILES[m[1]], presetId: m[1] }, ctx); return; }
   if (s.screen === 'welcome') root.innerHTML = welcome();
   else if (s.screen === 'free') root.innerHTML = freeSetup();
   else if (s.screen === 'blocked') root.innerHTML = blocked();
@@ -115,9 +117,7 @@ const CHEV = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
 function hasProgress() { const a = state.a; return Object.keys(a).some(k => !['units', 'heightUnit'].includes(k) && a[k] != null && a[k] !== ''); }
 
 function welcome() {
-  const saved = Object.entries(PROFILES);
   const existing = store.people();
-  const presets = saved.filter(([id]) => !existing.some(pp => pp.name === PROFILES[id].name));
   return `
 <header class="hero floor">
   <div class="hero-date">Gym plan</div>
@@ -132,7 +132,6 @@ ${hasProgress() ? `<div class="actions" style="margin-top:8px"><button class="bt
   <button class="door" data-action="${hasProgress() ? 'resume' : 'start'}"><b>Build me a plan</b><span>The trainer's interview, eight short parts. You get a program, a diet and a checklist for every session.</span></button>
   <button class="door" data-action="free"><b>I'll run my own</b><span>No plan. Log whatever you do, track food, weight and progress. Four questions to set up.</span></button>
 </div>
-${presets.map(([id, p]) => `<button class="link" style="margin-top:12px" data-action="load_profile" data-id="${id}">Load ${esc(p.name)}'s saved answers instead of the interview</button>`).join('')}
 <details class="fold"><summary>What the interview asks</summary>
 <ol class="steps">${INTAKE_STEPS.map(s => `<li><span>${esc(s.title)}</span><span class="muted small">${s.fields.length} question${s.fields.length === 1 ? '' : 's'}</span></li>`).join('')}</ol>
 </details>

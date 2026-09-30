@@ -19,7 +19,7 @@ No build step, no dependencies. ES modules need a server; opening `index.html` f
 
 Hosted at https://druvamurali1.github.io/fitness/ from the public GitHub repository `druvamurali1/fitness` (GitHub Pages, `main` branch, root). Deploy is `git push`; Pages rebuilds in about a minute. Before every push: bump `CACHE` in `sw.js` so phones drop the old offline copy, and run `npm test`. The repository is public: `.gitignore` keeps the gym photos, `docs/` and `.claude/` out, and `js/data/profiles.js` must never carry health details, the "why now" text or personal notes. `.claude/launch.json` has a `gym` config for the in-app browser preview. The service worker is skipped on localhost so edits show on reload; on any other host it caches everything, so bump `CACHE` in `sw.js` when shipping changes.
 
-To test a screen quickly: open the app, choose "Load Druva's profile" on the welcome screen. To go home and test as another person: Plan tab, "Home: switch person or add someone". To start over: Plan tab, "Erase this person's data", or clear the `gym.people.v1` key in localStorage.
+To test a screen quickly with Druva's profile: open `#setup/druva` (the preset is never shown on the home screen; a stranger must not see another person's name there). To go home and test as another person: Plan tab, "Home: switch person or add someone". To start over: Plan tab, "Erase this person's data", or clear the `gym.people.v1` key in localStorage.
 
 ## How to work with the owner
 

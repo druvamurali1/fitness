@@ -28,7 +28,9 @@ function route() {
     const fresh = doc.plan.mode === 'free' ? freePlan(base) : generatePlan(base);
     if (!fresh.blocked) { fresh.createdAt = doc.plan.createdAt; store.update(d => { d.profile = base; d.plan = fresh; }); return; }
   }
-  if (!doc.plan) { nav.hidden = true; current = 'onboarding'; renderOnboarding(root, { doc, done: () => navigate('today') }); return; }
+  if (!doc.plan || location.hash.startsWith('#setup/')) {
+    if (doc.plan && location.hash.startsWith('#setup/')) store.leavePerson();
+    nav.hidden = true; current = 'onboarding'; renderOnboarding(root, { doc: store.load(), done: () => navigate('today') }); return; }
   const parts = (location.hash || '#today').slice(1).split('/');
   let tab = parts[0];
   if (tab === 'home') { store.leavePerson(); location.hash = '#today'; return; }
