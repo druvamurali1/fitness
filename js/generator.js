@@ -10,7 +10,7 @@ const LEVEL = { novice: 0, detrained: 1, experienced: 2 };
 
 // Bump when the plan's shape or the data behind it changes; stored plans are
 // rebuilt from the profile on load when the version differs.
-export const PLAN_VERSION = 5;
+export const PLAN_VERSION = 6;
 
 export function checkRedFlags(profile) {
   return RED_FLAGS.filter(f => f.test(profile)).map(f => f.text);
@@ -349,4 +349,31 @@ export function recurringPain(sessions) {
   const counts = {};
   recent.forEach(s => (s.pain || []).forEach(j => { counts[j] = (counts[j] || 0) + 1; }));
   return Object.keys(counts).filter(j => counts[j] >= 2);
+}
+
+// ── Personal records ─────────────────────────────────────────────
+// The best set for an exercise: highest estimated one-rep max for loaded work,
+// most reps (or seconds) for bodyweight and timed work.
+function e1rmOf(w, r) { return r === 1 ? w : w * (1 + r / 30); }
+export function bestSet(item) {
+  const done = (item.sets || []).filter(s => s.done && s.reps > 0);
+  if (!done.length) return null;
+  const w = item.weightLb || 0;
+  const top = done.reduce((a, s) => (w ? e1rmOf(w, s.reps) > e1rmOf(w, a.reps) : s.reps > a.reps) ? s : a, done[0]);
+  return { weightLb: w, reps: top.reps, score: w ? e1rmOf(w, top.reps) : top.reps };
+}
+// Which exercises in `session` beat everything in `history` (older sessions).
+export function personalRecords(session, historyByExercise) {
+  const out = [];
+  for (const [id, item] of Object.entries(session.items || {})) {
+    const now = bestSet(item); if (!now) continue;
+    const prev = (historyByExercise[id] || []).map(bestSet).filter(Boolean);
+    if (!prev.length) continue; // first time is a baseline, not a record
+    const best = Math.max(...prev.map(b => b.score));
+    if (now.score > best + 1e-9) out.push({ exerciseId: id, ...now, previous: best });
+  }
+  return out;
+}
+export function sessionVolumeLb(session) {
+  return Object.values(session.items || {}).reduce((a, it) => a + (it.sets || []).filter(s => s.done && s.reps > 0).reduce((b, s) => b + (it.weightLb || 0) * s.reps, 0), 0);
 }

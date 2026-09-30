@@ -57,7 +57,10 @@ export const INTAKE_STEPS = [
     fields: [
       { key: 'equipment', label: 'Available', type: 'multi', options: [
         ['barbell', 'Barbell with a rack'], ['dumbbells', 'Dumbbells'], ['bench', 'Adjustable bench'], ['cables', 'Cable machine'],
-        ['machines', 'Weight machines (pulldown, row, press, leg curl)'], ['leg_press', 'Leg press'], ['pullup_bar', 'Pull-up bar'], ['cardio', 'Rower, bike or treadmill'] ] },
+        ['machines', 'Weight machines (pulldown, row, press, leg curl)'], ['leg_press', 'Leg press'], ['pullup_bar', 'Pull-up bar'], ['cardio', 'Rower, bike or treadmill'],
+        ['smith', 'Smith machine'], ['kettlebells', 'Kettlebells'], ['trap_bar', 'Trap bar'], ['ez_bar', 'EZ curl bar'], ['dip_bars', 'Dip bars'], ['assisted_pullup', 'Assisted pull-up machine'],
+        ['hack_squat', 'Hack squat'], ['calf_machine', 'Calf raise machine'], ['preacher_bench', 'Preacher curl bench'], ['t_bar', 'T-bar row'], ['roman_chair', 'Back extension bench'],
+        ['bands', 'Resistance bands'], ['ab_wheel', 'Ab wheel'], ['stability_ball', 'Stability ball'], ['battle_rope', 'Battle rope'], ['sled', 'Sled'], ['box', 'Plyo box'], ['slam_balls', 'Slam balls'], ['wall_balls', 'Wall balls'] ] },
       { key: 'dumbbellMax', label: 'Heaviest dumbbell', type: 'load', required: false, min: 1, max: 200 },
     ] },
 

@@ -10,7 +10,7 @@ export const PROFILES = {
     pain: [], conditions: [], meds: false, surgery: false, doctorLimit: false,
     experience: 'detrained', pushups: 20, hangSeconds: 8, stairs: false,
     daysPerWeek: 3, trainingDays: [1, 3, 5], cardioDays: [2, 4], timeOfDay: 'morning', sessionMinutes: 60, travel: true,
-    equipment: ['barbell', 'dumbbells', 'bench', 'cables', 'machines', 'pullup_bar', 'cardio'], dumbbellMax: { lb: 50 },
+    equipment: ['barbell', 'dumbbells', 'bench', 'cables', 'machines', 'pullup_bar', 'cardio', 'smith', 'kettlebells', 'roman_chair', 'stability_ball', 'battle_rope', 'slam_balls', 'wall_balls'], dumbbellMax: { lb: 50 },
     dietType: 'nonveg', cuisine: 'south_indian', mealsPerDay: 2, vegDays: 1, whey: true, waterOk: true,
     alcoholPerWeek: 4, nicotine: true,
     quitReason: 'No proper guidance.',

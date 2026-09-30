@@ -446,3 +446,6 @@ td.num, th.num { text-align: right; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .donebtn { border-color: var(--chalk); color: var(--chalk); } :root:not([data-theme="light"]) .donebtn[aria-pressed="true"] { color: var(--pin-ink); } }
 :root[data-theme="dark"] .donebtn { border-color: var(--chalk); color: var(--chalk); }
 :root[data-theme="dark"] .donebtn[aria-pressed="true"] { color: var(--pin-ink); }
+.noterow { margin-top: 10px; }
+.noterow .input { font-size: 15px; min-height: 42px; }
+.note.pr { border-left-color: var(--pin); background: color-mix(in srgb, var(--pin) 12%, transparent); padding: 10px 14px; }

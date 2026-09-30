@@ -6,6 +6,7 @@ import { esc, delegate, loadText, bodyText, applyTheme } from './ui.js';
 import { fmtNum } from '../util.js';
 import { setsText } from '../data/howto.js';
 import { EXERCISES, PATTERN_PREFERENCE } from '../data/exercises.js';
+import { MUSCLE_GROUPS, muscleGroup } from './today.js';
 import { freePlan } from '../generator.js';
 import { startText, loadShort } from './words.js';
 
@@ -114,12 +115,14 @@ function workoutBlock(w, units) {
 
 // ── Self-driven mode: targets, the exercise library, settings ──
 
-const PATTERN_NAMES = { squat: 'Squats', hinge: 'Deadlifts and hinges', horizontal_push: 'Chest presses', vertical_push: 'Shoulder presses', vertical_pull: 'Pull-ups and pulldowns', horizontal_pull: 'Rows', lunge: 'Lunges', knee_flexion: 'Hamstrings', knee_extension: 'Quads', elbow_flexion: 'Biceps', elbow_extension: 'Triceps', rear_delt: 'Rear shoulders', core_static: 'Core, holds', core_dynamic: 'Core, reps', grip: 'Grip and carries' };
+const PATTERN_NAMES = { squat: 'Squats', hinge: 'Deadlifts and hinges', hinge_light: 'Hip hinges, lighter', horizontal_push: 'Chest presses', horizontal_push_incline: 'Incline presses', chest_fly: 'Chest flys', vertical_push: 'Shoulder presses', lateral_raise: 'Shoulder raises and shrugs', vertical_pull: 'Pull-ups and pulldowns', vertical_pull_hard: 'Chin-ups', horizontal_pull: 'Rows', lunge: 'Lunges and step-ups', knee_flexion: 'Hamstrings', knee_extension: 'Quads', calf: 'Calves', elbow_flexion: 'Biceps', elbow_extension: 'Triceps', rear_delt: 'Rear shoulders', core_static: 'Core, holds', core_dynamic: 'Core, reps', hip: 'Hips', grip: 'Grip and carries', cardio: 'Cardio and conditioning' };
+const libUi = { group: null, mine: false };
 
 function renderFree(root, ctx) {
   const d = ctx.doc, plan = d.plan, p = d.profile, units = d.settings.units, diet = plan.diet;
   const groups = {};
-  Object.entries(EXERCISES).forEach(([id, e]) => { (groups[e.pattern] ||= []).push({ id, name: e.name }); });
+  const have = new Set(p?.equipment || []);
+  Object.entries(EXERCISES).filter(([, e]) => !libUi.mine || e.equipment.every(k => have.has(k))).filter(([, e]) => !libUi.group || muscleGroup(e).includes(libUi.group)).forEach(([id, e]) => { (groups[e.pattern] ||= []).push({ id, name: e.name, sub: (e.muscles?.primary || []).join(', ') }); });
   const customs = Object.entries(d.customExercises || {});
   root.innerHTML = `
 <header class="hero floor">
@@ -143,9 +146,11 @@ function renderFree(root, ctx) {
 <ul class="cues">${diet.proteinPortions.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
 
 <h2 class="h2">Exercise library</h2>
-<p class="small muted" style="margin-top:-4px">Tap one for a video, how to do it, and where to note its place in your gym. Anything you add by name during a workout appears under "Yours".</p>
+<p class="small muted" style="margin-top:-4px">${Object.keys(EXERCISES).length} exercises. Tap one for a video, how to do it, and where to note its place in your gym. Anything you add by name during a workout appears under "Yours".</p>
+<div class="chips" style="margin:8px 0 4px"><button class="chip ${!libUi.group ? 'on' : ''}" data-action="lib_group" data-g="">All</button>${MUSCLE_GROUPS.map(([g]) => `<button class="chip ${libUi.group === g ? 'on' : ''}" data-action="lib_group" data-g="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join('')}<button class="chip ${libUi.mine ? 'on' : ''}" data-action="lib_mine">My gym only</button></div>
 ${customs.length ? `<h3 class="h3">Yours</h3><ul class="rows">${customs.map(([id, c]) => `<li class="row"><div class="row-head" style="grid-template-columns:1fr auto"><span class="row-title">${esc(c.name)}</span><button class="link" data-action="del_custom" data-id="${id}">remove</button></div></li>`).join('')}</ul>` : ''}
-${Object.keys(PATTERN_NAMES).map(k => groups[k] ? `<h3 class="h3">${PATTERN_NAMES[k]}</h3><ul class="rows">${groups[k].map(x => `<li class="row"><a class="row-head link-row" style="grid-template-columns:1fr auto" href="#exercise/${x.id}"><span class="row-title">${esc(x.name)}</span><span class="row-meta chev" aria-hidden="true">▸</span></a></li>`).join('')}</ul>` : '').join('')}
+${Object.keys(PATTERN_NAMES).map(k => groups[k] ? `<h3 class="h3">${PATTERN_NAMES[k]}</h3><ul class="rows tight">${groups[k].map(x => `<li class="row"><a class="row-head link-row" style="grid-template-columns:1fr auto" href="#exercise/${x.id}"><span><span class="row-title">${esc(x.name)}</span><br><span class="row-sub">${esc(x.sub)}</span></span><span class="row-meta chev" aria-hidden="true">▸</span></a></li>`).join('')}</ul>` : '').join('')}
+${(d.routines || []).length ? `<h3 class="h3">Your routines</h3><ul class="rows">${d.routines.map(r => `<li class="row"><div class="row-head" style="grid-template-columns:1fr auto"><span><span class="row-title">${esc(r.name)}</span><br><span class="row-sub">${r.exercises.map(id => EXERCISES[id]?.name || d.customExercises?.[id]?.name || id).join(', ')}</span></span><button class="link" data-action="del_routine" data-id="${r.id}">remove</button></div></li>`).join('')}</ul>` : ''}
 
 <h2 class="h2">Settings</h2>
 <div class="signal"><div><div class="lbl">Your name</div><div class="sub">Shown on the home screen.</div></div><input class="input" style="width:150px" type="text" maxlength="40" value="${esc(p?.name || '')}" data-change="name" aria-label="Your name"></div>
@@ -164,6 +169,9 @@ ${Object.keys(PATTERN_NAMES).map(k => groups[k] ? `<h3 class="h3">${PATTERN_NAME
   const retarget = patch => store.update(x => { x.profile = { ...x.profile, ...patch }; const fresh = freePlan(x.profile); fresh.createdAt = x.plan.createdAt; x.plan = fresh; });
   delegate(root, {
     target_days: el => retarget({ daysPerWeek: Number(el.dataset.value) }),
+    lib_group: el => { libUi.group = el.dataset.g || null; renderFree(root, ctx); },
+    lib_mine: () => { libUi.mine = !libUi.mine; renderFree(root, ctx); },
+    del_routine: el => { if (confirm('Remove this routine? Logged workouts stay.')) store.deleteRoutine(el.dataset.id); },
     target_meals: el => retarget({ mealsPerDay: Number(el.dataset.value) }),
     del_custom: el => { if (confirm('Remove this exercise from your list? Logged sets stay in your history.')) store.update(x => { delete x.customExercises[el.dataset.id]; }); },
     unit: el => store.update(x => { x.settings.units[el.dataset.scope] = el.dataset.value; if (x.profile) x.profile.units = x.settings.units; }),

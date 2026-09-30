@@ -10,7 +10,9 @@
 // mistakes: the two or three things beginners get wrong
 // video:    YouTube id of a demonstration, filled from videos.js
 
-export const HOWTO = {
+import { HOWTO_MORE } from './howto-more.js';
+
+const HOWTO_BASE = {
   back_squat: {
     what: 'The main leg exercise. A barbell rests on your upper back while you squat down and stand up. Works thighs, glutes and the whole trunk.',
     where: 'barbell',
@@ -372,6 +374,8 @@ export const HOWTO = {
     mistakes: ['Shoulders rolling forward.', 'Leaning to one side.'],
   },
 };
+
+export const HOWTO = { ...HOWTO_BASE, ...HOWTO_MORE };
 
 // Plain-English versions of the notation used in the plan.
 export function setsText(e) {

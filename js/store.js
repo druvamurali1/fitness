@@ -55,7 +55,7 @@ export function deletePerson(id) { const st = loadState(); delete st.people[id];
 function migrate(d) {
   // Bump VERSION and add a step here when the shape changes.
   if (!d.version) d.version = 1;
-  d.sessions ||= []; d.days ||= {}; d.photos ||= []; d.equipmentPhotos ||= {}; d.customExercises ||= {}; d.settings ||= { units: { load: 'lb', body: 'kg' }, theme: 'auto' };
+  d.sessions ||= []; d.days ||= {}; d.photos ||= []; d.equipmentPhotos ||= {}; d.customExercises ||= {}; d.routines ||= []; d.settings ||= { units: { load: 'lb', body: 'kg' }, theme: 'auto' };
   return d;
 }
 
@@ -107,6 +107,13 @@ export function startFreeSession() {
 export function addFreeExercise(sessionId, exerciseId, weightLb = null) {
   update(d => { const s = d.sessions.find(x => x.id === sessionId); if (!s || s.items[exerciseId]) return; s.order.push(exerciseId); s.items[exerciseId] = { weightLb, sets: [{ reps: null, done: false }, { reps: null, done: false }, { reps: null, done: false }] }; });
 }
+export function saveRoutine(name, exerciseIds) { const id = uid(); update(d => { d.routines ||= []; d.routines.push({ id, name: name.trim().slice(0, 40), exercises: exerciseIds }); }); return id; }
+export function deleteRoutine(id) { update(d => { d.routines = (d.routines || []).filter(r => r.id !== id); }); }
+export function startRoutine(routine) {
+  const s = startFreeSession();
+  for (const id of routine.exercises) { const h = exerciseHistory(id); const last = h.length ? h[h.length - 1] : null; addFreeExercise(s.id, id, last ? last.weightLb : null); }
+  return s;
+}
 export function addCustomExercise(name) {
   const id = 'custom:' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
   update(d => { d.customExercises ||= {}; d.customExercises[id] = { name }; });
@@ -131,7 +138,10 @@ export function swapExercise(sessionId, fromId, toId, weightLb, suggested = null
     s.items[toId] = { weightLb, suggested, sets: Array.from({ length: n }, () => ({ reps: null, done: false })), swappedFrom: fromId };
     if (s.order) s.order = s.order.map(k => k === fromId ? toId : k); });
 }
-export function finishSession(id) { update(d => { const s = d.sessions.find(x => x.id === id); if (s) { s.completed = true; s.finishedAt = Date.now(); } }); }
+export function finishSession(id, prs = []) { update(d => { const s = d.sessions.find(x => x.id === id); if (s) { s.completed = true; s.finishedAt = Date.now(); s.prs = prs; d.lastFinished = id; } }); }
+export function setExerciseNote(sessionId, exerciseId, note) { update(d => { const s = d.sessions.find(x => x.id === sessionId); if (s && s.items[exerciseId]) s.items[exerciseId].note = note || null; }); }
+// The most recent note left on an exercise, from any completed session.
+export function lastNote(exerciseId) { const h = exerciseHistory(exerciseId, { includeDeload: true }).filter(x => x.note); return h.length ? h[h.length - 1] : null; }
 export function abandonSession(id) { update(d => { const i = d.sessions.findIndex(x => x.id === id); if (i >= 0) d.sessions.splice(i, 1); }); }
 
 // History of one exercise across completed sessions, oldest first.

@@ -6,8 +6,10 @@ import { lineChart } from '../charts.js';
 import { isoDate, weekStart, addDays, mean, fmtShort, fmtNum, displayLoad, kgToLb, e1rm } from '../util.js';
 import { esc, delegate, bodyText, loadText } from './ui.js';
 import { EXERCISES } from '../data/exercises.js';
+import { bestSet } from '../generator.js';
 
-const ui = { lift: null };
+const ui = { lift: null, measure: 'waistCm' };
+const MEASURES = [['waistCm', 'Waist'], ['chestCm', 'Chest'], ['armCm', 'Upper arm'], ['thighCm', 'Thigh'], ['hipsCm', 'Hips']];
 
 export function renderProgress(root, ctx) {
   const d = ctx.doc, plan = d.plan, units = d.settings.units, today = isoDate();
@@ -26,6 +28,9 @@ export function renderProgress(root, ctx) {
 
   const weeks = weeklyWeights(d, today, 12, units);
   const waist = Object.entries(d.days).filter(([, r]) => r.waistCm).map(([date, r]) => ({ date, y: units.body === 'lb' ? r.waistCm / 2.54 : r.waistCm })).sort((a, b) => a.date < b.date ? -1 : 1);
+  const measured = MEASURES.filter(([k]) => Object.values(d.days).some(r => r[k]));
+  if (!measured.some(([k]) => k === ui.measure)) ui.measure = measured.length ? measured[0][0] : 'waistCm';
+  const measSeries = Object.entries(d.days).filter(([, r]) => r[ui.measure]).map(([date, r]) => ({ date, y: units.body === 'lb' ? r[ui.measure] / 2.54 : r[ui.measure] })).sort((a, b) => a.date < b.date ? -1 : 1);
 
   const nowAvg = weeks.length ? weeks[weeks.length - 1] : null;
   const firstAvg = weeks.length > 1 ? weeks[0] : null;
@@ -55,13 +60,17 @@ ${hist.length ? `<div class="stats">
 ${lineChart(pts, { unit: loaded ? units.load : (lift.measure === 'seconds' ? 's' : 'reps'), id: 'lift' })}
 ${hist.length ? `<table><thead><tr><th>Date</th><th class="num">Best set</th><th class="num">${loaded && lift.measure !== 'seconds' ? 'Est. 1 rep max' : ''}</th></tr></thead><tbody>${hist.slice().reverse().slice(0, 6).map(h => `<tr><td>${fmtShort(h.date)}</td><td class="num">${loaded ? loadText(h.weightLb, units, lift.loadType) + ' × ' : ''}${h.reps}${lift.measure === 'seconds' ? ' s' : ''}</td><td class="num">${loaded && lift.measure !== 'seconds' ? loadText(e1rm(h.weightLb, h.reps), units, lift.loadType) : ''}</td></tr>`).join('')}</tbody></table>` : `<p class="small muted">Finish a workout with ${esc(lift.name)} in it and the best set lands here.</p>`}
 
+<h2 class="h2">Personal records</h2>
+${prList(d, lifts, units)}
+
 <h2 class="h2">Bodyweight</h2>
 <p class="small muted" style="margin-top:-4px">Weekly averages. Single mornings bounce around; the average does not.${plan.diet.weeklyRateKg[0] !== plan.diet.weeklyRateKg[1] ? ` Aim: ${rateText(plan.diet.weeklyRateKg, units)} a week.` : ''}${plan.diet.weightTargetKg ? ` Goal ${bodyText(plan.diet.weightTargetKg, units)}.` : ''}</p>
 ${weeks.length ? lineChart(weeks.map(w => ({ date: w.start, y: w.avg, note: `${w.n} weigh-ins` })), { unit: units.body, id: 'bw' }) : `<p class="empty">Weigh yourself on the Today tab each morning. The first weekly average shows after one weigh-in.</p>`}
 ${weeks.length > 1 ? `<table><thead><tr><th>Week of</th><th class="num">Average</th><th class="num">Mornings</th><th class="num">Change</th></tr></thead><tbody>${weeks.slice().reverse().slice(0, 8).map((w, i, arr) => { const prev = arr[i + 1]; const ch = prev ? w.avg - prev.avg : null; return `<tr><td>${fmtShort(w.start)}</td><td class="num">${fmtNum(w.avg, 1)}</td><td class="num">${w.n}</td><td class="num">${ch == null ? '' : (ch > 0 ? '+' : '') + fmtNum(ch, 1)}</td></tr>`; }).join('')}</tbody></table>` : ''}
 
-<h2 class="h2">Waist</h2>
-${waist.length ? lineChart(waist, { unit: units.body === 'lb' ? 'in' : 'cm', id: 'waist' }) : `<p class="empty">Measure on Sundays in the Week tab. If weight goes up and the waist stays flat, it is muscle.</p>`}
+<h2 class="h2">Measurements</h2>
+${measured.length > 1 ? `<div class="chips" style="margin-bottom:6px">${measured.map(([k, l]) => `<button class="chip ${k === ui.measure ? 'on' : ''}" data-action="measure" data-key="${k}">${l}</button>`).join('')}</div>` : ''}
+${measSeries.length ? lineChart(measSeries, { unit: units.body === 'lb' ? 'in' : 'cm', id: 'meas' }) : `<p class="empty">Measure the waist on Sundays in the Week tab; chest, arm, thigh and hips monthly. If weight goes up and the waist stays flat, it is muscle.</p>`}
 
 <h2 class="h2">Four weeks ago, and now</h2>
 ${monthList(d, plan, units, lifts, today)}
@@ -72,11 +81,19 @@ ${photoBlock(d)}
 <div class="actions inline"><label class="btn quiet small" style="cursor:pointer">Add photo<input type="file" accept="image/*" capture="environment" hidden data-change="photo"></label></div>`;
 
   delegate(root, {
+    measure: el => { ui.measure = el.dataset.key; renderProgress(root, ctx); },
     del_photo: el => { if (confirm('Delete this photo?')) store.update(x => { x.photos = x.photos.filter(p => p.id !== el.dataset.id); }); },
   });
   root.querySelector('[data-change="lift"]').onchange = e => { ui.lift = e.target.value; renderProgress(root, ctx); };
   bindPhoto(root);
   bindTooltips(root);
+}
+
+// Best ever set per exercise, most recent first.
+function prList(d, lifts, units) {
+  const rows = lifts.map(l => { const h = store.exerciseHistory(l.exerciseId, { includeDeload: false }); let best = null; for (const x of h) { const b = bestSet(x); if (b && (!best || b.score > best.score)) best = { ...b, date: x.date }; } return best ? { name: l.name, loadType: l.loadType, ...best } : null; }).filter(Boolean).sort((a, b) => a.date < b.date ? 1 : -1);
+  if (!rows.length) return `<p class="empty">Your first session sets the baseline. Every set after that which beats it shows up here.</p>`;
+  return `<ul class="cmp">${rows.map(r => `<li><span>${esc(r.name)}</span><span class="muted">${fmtShort(r.date)}</span><span><b>${r.weightLb ? esc(loadText(r.weightLb, units, r.loadType)) + ' × ' : ''}${r.reps}</b></span></li>`).join('')}</ul>`;
 }
 
 function bindPhoto(root) {
@@ -115,6 +132,7 @@ function monthList(d, plan, units, lifts, today) {
   const rows = [
     ['Bodyweight, 7-day average', fmtW(avgIn(ago1, ago0)), fmtW(avgIn(now0, today))],
     ['Waist', fmtWaist(waistIn(addDays(ago0, -14), ago0)), fmtWaist(waistIn(addDays(today, -14), today))],
+    ...MEASURES.filter(([k]) => k !== 'waistCm' && Object.values(d.days).some(r => r[k])).map(([k, l]) => { const at = (a, b) => { const v = Object.entries(d.days).filter(([x, r]) => x >= a && x <= b && r[k]).map(([, r]) => r[k]); return v.length ? v[v.length - 1] : null; }; return [l, fmtWaist(at(addDays(ago0, -30), ago0)), fmtWaist(at(addDays(today, -30), today))]; }),
     ...mains.map(l => [l.name, liftAt(l.exerciseId, addDays(ago0, -13), ago0) ?? '–', liftAt(l.exerciseId, addDays(today, -13), today) ?? '–']),
     ['Workouts in 4 weeks', `${sessions(addDays(ago0, -27), ago0)} of ${(plan.targetPerWeek ?? plan.trainingDays.length) * 4}`, `${sessions(addDays(today, -27), today)} of ${(plan.targetPerWeek ?? plan.trainingDays.length) * 4}`],
   ];

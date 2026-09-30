@@ -35,6 +35,7 @@ export function renderExercise(root, ctx, id) {
   </div>` : ''}
 </header>
 <p class="lede">${esc(how.what)}</p>
+${ex.muscles ? `<p class="small muted" style="margin-top:-6px">Works: ${esc(ex.muscles.primary.join(', '))}${ex.muscles.secondary?.length ? `. Also: ${esc(ex.muscles.secondary.join(', '))}` : ''}.</p>` : ''}
 ${v ? video(v) : `<div class="empty">No video linked yet for this one. The steps below are enough to start with light weight.</div>`}
 
 <h2 class="h3">Where it is in your gym</h2>

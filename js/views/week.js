@@ -7,6 +7,7 @@ import { esc, delegate, bodyText, bodyFromInput, bodyToInput } from './ui.js';
 
 const ui = { weekOffset: 0, selected: null };
 const DAY_LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MEASURES = [['chestCm', 'Chest', 'around the nipple line, relaxed'], ['armCm', 'Upper arm', 'flexed, at the peak'], ['thighCm', 'Thigh', 'mid-thigh, standing'], ['hipsCm', 'Hips', 'widest point']];
 
 export function renderWeek(root, ctx) {
   const d = ctx.doc, plan = d.plan, units = d.settings.units, today = isoDate();
@@ -43,7 +44,8 @@ ${future ? '' : `
   ${(weekend && diet.alcoholRule) || rec.beers ? pipRow('beers', 'Beers', rec.beers ? `${rec.beers}${rec.beers > 2 ? ', over the two' : ''}` : 'none', rec.beers || 0, 2, 6) : ''}
   <div class="logrow"><div class="logl"><b>Sleep</b><span>hours, roughly</span></div><div class="stepper slim"><button data-action="sleep" data-dir="down" aria-label="Less sleep">−</button><output>${rec.sleep ?? '–'}</output><button data-action="sleep" data-dir="up" aria-label="More sleep">+</button></div></div>
   <div class="logrow"><div class="logl"><b>Morning weight</b><span>${units.body}, after the bathroom</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${bodyToInput(rec.weightKg, units)}" data-change="weight" aria-label="Weight"></div>
-  ${dow === 0 || rec.waistCm ? `<div class="logrow"><div class="logl"><b>Waist</b><span>at the navel, relaxed, ${units.body === 'lb' ? 'inches' : 'cm'}</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${waistToInput(rec.waistCm, units)}" data-change="waist" aria-label="Waist"></div>` : ''}
+  ${dow === 0 || rec.waistCm || ui.measuring === sel ? `<div class="logrow"><div class="logl"><b>Waist</b><span>at the navel, relaxed, ${units.body === 'lb' ? 'inches' : 'cm'}</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${waistToInput(rec.waistCm, units)}" data-change="waist" aria-label="Waist"></div>` : ''}
+  ${ui.measuring === sel || MEASURES.some(([k]) => rec[k]) ? MEASURES.map(([k, label, how]) => `<div class="logrow"><div class="logl"><b>${label}</b><span>${how}, ${units.body === 'lb' ? 'inches' : 'cm'}</span></div><input class="input num" type="number" inputmode="decimal" step="0.1" value="${waistToInput(rec[k], units)}" data-change="meas" data-key="${k}" aria-label="${label}"></div>`).join('') : `<div class="logrow col"><button class="link" data-action="more_measures">${dow === 0 ? 'Also measure chest, arm, thigh and hips (monthly is enough)' : 'Measure today: waist, chest, arm, thigh, hips'}</button></div>`}
   <div class="logrow col"><div class="logl"><b>Note</b></div><input class="input" type="text" value="${esc(rec.note || '')}" placeholder="Anything worth remembering" maxlength="200" data-change="note" aria-label="Note for the day"></div>
 </div>`}
 
@@ -61,12 +63,14 @@ ${allTime(d, plan, today)}`;
     pick: el => { ui.selected = el.dataset.date; renderWeek(root, ctx); },
     pip: el => { const { key, n } = el.dataset; const cur = store.day(sel)[key] || 0; const v = Number(n); store.setDay(sel, { [key]: v === cur ? v - 1 : v }); },
     water: () => store.setDay(sel, { water: !store.day(sel).water }),
+    more_measures: () => { ui.measuring = sel; renderWeek(root, ctx); },
     sleep: el => { const cur = store.day(sel).sleep ?? 7; store.setDay(sel, { sleep: Math.max(0, Math.min(14, cur + (el.dataset.dir === 'up' ? 0.5 : -0.5))) }); },
   });
   const bind = (name, fn) => root.querySelectorAll(`[data-change="${name}"]`).forEach(i => i.onchange = () => fn(i.value));
   bind('weight', v => { const kg = bodyFromInput(v, units); if (kg != null && (kg < 30 || kg > 250)) { alert(units.body === 'lb' ? 'Weight should be between 66 and 551 lb.' : 'Weight should be between 30 and 250 kg.'); renderWeek(root, ctx); return; } store.setDay(sel, { weightKg: kg }); });
   bind('waist', v => { const cm = v === '' ? null : (units.body === 'lb' ? Number(v) * 2.54 : Number(v)); if (cm != null && (cm < 40 || cm > 200)) { alert(units.body === 'lb' ? 'Waist should be between 16 and 79 inches.' : 'Waist should be between 40 and 200 cm.'); renderWeek(root, ctx); return; } store.setDay(sel, { waistCm: cm }); });
   bind('note', v => store.setDay(sel, { note: v.trim().slice(0, 200) || null }));
+  root.querySelectorAll('[data-change="meas"]').forEach(i => i.onchange = () => { const v = i.value; const cm = v === '' ? null : (units.body === 'lb' ? Number(v) * 2.54 : Number(v)); if (cm != null && (cm < 15 || cm > 200)) { alert('That measurement looks off. Check the units.'); renderWeek(root, ctx); return; } store.setDay(sel, { [i.dataset.key]: cm }); });
 }
 
 // A row of tappable pips. Tap the n-th to set the count to n; tap the last

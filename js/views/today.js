@@ -3,7 +3,7 @@
 // one tap away. Also the morning weigh-in.
 
 import * as store from '../store.js';
-import { suggestNext, swapped, isStalled, lighterLoad, needsLighterWeek, recurringPain, generatePlan } from '../generator.js';
+import { suggestNext, swapped, isStalled, lighterLoad, needsLighterWeek, recurringPain, generatePlan, personalRecords, sessionVolumeLb, bestSet } from '../generator.js';
 import { PAIN_JOINTS } from '../data/intake.js';
 import { DAY_NAMES } from '../data/intake.js';
 import { HOWTO, setsText } from '../data/howto.js';
@@ -27,8 +27,12 @@ export function renderToday(root, ctx) {
 
   delegate(root, {
     start_free: () => { const s = store.startFreeSession(); ui.mode = 'list'; ui.expanded = new Set(); store.save(); },
+    start_routine: el => { const r = d.routines.find(x => x.id === el.dataset.id); if (!r) return; ui.mode = 'list'; ui.expanded = new Set(r.exercises.slice(0, 1).map(id => 'ex:' + id)); store.startRoutine(r); },
+    save_routine: () => { const ids = session.order || Object.keys(session.items); if (!ids.length) return; const name = prompt('Name this routine', 'Routine ' + ((d.routines || []).length + 1)); if (!name) return; store.saveRoutine(name, ids); },
     pick_open: () => { ui.picking = true; ui.q = ''; renderToday(root, ctx); root.querySelector('[data-change="q"]')?.focus(); },
     pick_close: () => { ui.picking = false; renderToday(root, ctx); },
+    pick_group: el => { ui.group = el.dataset.g || null; renderToday(root, ctx); },
+    pick_mine: () => { ui.onlyMine = !ui.onlyMine; renderToday(root, ctx); },
     pick: el => { const id = el.dataset.id; const h = store.exerciseHistory(id); const last = h.length ? h[h.length - 1] : null; store.addFreeExercise(session.id, id, last ? last.weightLb : (EXERCISES[id]?.start?.lb ?? null)); ui.picking = false; ui.expanded.add('ex:' + id); },
     pick_custom: () => { const name = (ui.q || '').trim().slice(0, 40); if (!name) return; const id = store.addCustomExercise(name); store.addFreeExercise(session.id, id, null); ui.picking = false; ui.expanded.add('ex:' + id); },
     swap_open: el => { ui.swapping = el.dataset.ex; renderToday(root, ctx); },
@@ -68,12 +72,13 @@ export function renderToday(root, ctx) {
       renderToday(root, ctx); },
     finish: () => { if (!session) return; const doneSets = countDone(session); if (doneSets === 0 && !confirm('No sets logged. Finish anyway? It will count as a completed session.')) return;
       if (!session.painAsked && session.source !== 'free') { ui.mode = 'guided'; ui.step = 'finish'; renderToday(root, ctx); root.querySelector('.painrow')?.scrollIntoView({ block: 'center' }); return; }
-      stopTimer(); store.finishSession(session.id); ui.expanded.clear(); ui.step = null; afterFinish(d); },
+      stopTimer(); const hist = Object.fromEntries(Object.keys(session.items).map(id => [id, store.exerciseHistory(id)])); const prs = personalRecords(session, hist); store.finishSession(session.id, prs); ui.expanded.clear(); ui.step = null; afterFinish(d); },
     discard: () => { if (confirm('Throw this session away? Nothing from it will be saved.')) { stopTimer(); store.abandonSession(session.id); ui.step = null; } },
     cardio_done: () => { const cur = store.day(today).cardio; store.setDay(today, { cardio: !cur }); },
   });
   root.querySelectorAll('[data-change="weight"]').forEach(inp => inp.onchange = () => { const kg = bodyFromInput(inp.value, units); if (kg != null && (kg < 30 || kg > 250)) { inp.value = ''; alert(units.body === 'lb' ? 'Weight should be between 66 and 551 lb.' : 'Weight should be between 30 and 250 kg.'); return; } store.setDay(today, { weightKg: kg }); });
   const q = root.querySelector('[data-change="q"]'); if (q) q.oninput = () => { ui.q = q.value; const list = root.querySelector('#picklist'); if (list) list.innerHTML = pickList(d, ui.q); };
+  root.querySelectorAll('[data-change="exnote"]').forEach(inp => inp.onchange = () => store.setExerciseNote(session.id, inp.dataset.ex, inp.value.trim().slice(0, 140)));
   root.querySelectorAll('[data-change="repsin"]').forEach(inp => inp.onchange = () => { const { ex, i } = inp.dataset; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)].reps = Math.min(300, Math.max(0, Math.round(Number(inp.value) || 0))); }); });
   root.querySelectorAll('[data-change="loadin"]').forEach(inp => inp.onchange = () => { const ex = inp.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].weightLb = Math.min(2500, Math.max(0, toCanonicalLb(Number(inp.value) || 0, units.load))); }); });
 }
@@ -134,6 +139,7 @@ function idleView(d, units, today) {
   const learning = isLearning(d, next);
 
   const notices = idleNotices(d, today, next);
+  const lastDone = d.sessions.find(s => s.id === d.lastFinished && s.completed && s.date === today);
   let headline, sub;
   if (doneToday) { headline = 'Done'; sub = 'Session logged. Eat. The next one is ' + (nextDay ? DAY_NAMES[dayOfWeek(nextDay)] : 'soon') + '.'; }
   else if (isLift) { headline = next.focus; sub = `Workout ${next.id}, your session ${n}. Today.`; }
@@ -144,8 +150,9 @@ function idleView(d, units, today) {
   <div class="hero-date">${fmtDate(today)}</div>
   <div class="${doneToday ? 'display' : 'display-words'}">${esc(headline)}</div>
   <p class="sub">${esc(sub)}</p>
-  ${doneToday ? '' : `<button class="btn primary block" data-action="start" data-src="main">Start workout ${esc(next.id)}</button>`}
+  ${doneToday ? summaryStats(lastDone, units) : `<button class="btn primary block" data-action="start" data-src="main">Start workout ${esc(next.id)}</button>`}
 </header>
+${lastDone && lastDone.prs && lastDone.prs.length ? prBand(lastDone, units) : ''}
 ${notices}
 ${missedWeek(d, today)}
 ${learning && !doneToday ? `<div class="note"><p><b>Learning session.</b> Light weight, good form, read each exercise page before you try it. The numbers do not matter yet.</p></div>` : ''}
@@ -175,6 +182,19 @@ function idleNotices(d, today, next) {
     if (why) out.push(`<div class="note warn"><p><b>Time for a lighter week.</b> ${esc(why)}${stalled.length ? ' Stalled: ' + esc(stalled.map(e => e.name).join(', ')) + '.' : ''} Seven days at seventy percent and two sets, then the weights start moving again. Every good program has one.</p><div class="actions inline" style="margin:8px 0 0"><button class="btn small" data-action="start_deload">Start the lighter week</button><button class="link" data-action="snooze_deload">Not this week</button></div></div>`);
   }
   return out.join('');
+}
+
+// The three numbers of a finished session, in the band.
+function summaryStats(s, units) {
+  if (!s) return '';
+  const mins = s.finishedAt ? Math.round((s.finishedAt - s.startedAt) / 60000) : 0;
+  const sets = Object.values(s.items).reduce((a, it) => a + it.sets.filter(x => x.done && x.reps > 0).length, 0);
+  const vol = sessionVolumeLb(s);
+  const volShown = units.load === 'kg' ? Math.round(vol / 2.2046) : Math.round(vol);
+  return `<div class="stats on-floor"><div><b>${mins}<span class="of">min</span></b><span>in the gym</span></div><div><b>${sets}</b><span>sets logged</span></div><div><b>${fmtNum(volShown)}</b><span>${units.load} lifted in total</span></div></div>`;
+}
+function prBand(s, units) {
+  return `<div class="note pr"><p><b>${s.prs.length === 1 ? 'Personal record' : s.prs.length + ' personal records'}.</b> ${s.prs.map(p => `${esc(EXERCISES[p.exerciseId]?.name || store.load().customExercises?.[p.exerciseId]?.name || p.exerciseId)}: ${p.weightLb ? loadShort(p.weightLb, units, EXERCISES[p.exerciseId]?.loadType || 'free') + ' × ' : ''}${p.reps}`).join('; ')}. Best you have ever done.</p></div>`;
 }
 
 function isLearning(d, w) { return d.sessions.filter(s => s.completed && s.workoutId === w.id && s.source === 'main').length < 2; }
@@ -393,6 +413,7 @@ function setGrid(e, it, units, d) {
       </div>`).join('')}
     </div>
     ${e.free ? `<div class="actions inline" style="margin:10px 0 0"><button class="btn quiet small" data-action="add_set" data-ex="${e.exerciseId}">Add a set</button><button class="link" data-action="remove_ex" data-ex="${e.exerciseId}">Remove exercise</button></div>` : ''}
+    ${noteRow(e, it)}
     <p class="small muted" style="margin-top:10px">Tap Done after each set. The row turns yellow and the rest timer starts.</p>`;
 }
 
@@ -443,8 +464,11 @@ function freeIdleView(d, units, today) {
   <div class="hero-date">${fmtDate(today)}</div>
   <div class="${doneToday ? 'display' : 'display-words'}">${doneToday ? 'Done' : 'Your workout'}</div>
   <p class="sub">${doneToday ? 'Logged for today. Another one is fine if you want it.' : `${thisWeek} of ${plan.targetPerWeek} this week. Whatever you do, log it here.`}</p>
-  <button class="btn ${doneToday ? '' : 'primary'} block" data-action="start_free">Start a workout</button>
+  ${doneToday ? summaryStats(d.sessions.find(s => s.id === d.lastFinished && s.date === today), units) : ''}
+  <button class="btn ${doneToday ? '' : 'primary'} block" data-action="start_free">Start an empty workout</button>
 </header>
+${(d.routines || []).length ? `<h2 class="h2" style="margin-top:14px">Your routines</h2><ul class="rows">${d.routines.map(r => `<li class="row"><div class="row-head" style="grid-template-columns:1fr auto"><span><span class="row-title">${esc(r.name)}</span><br><span class="row-sub">${r.exercises.map(id => EXERCISES[id]?.name || d.customExercises?.[id]?.name || id).join(', ')}</span></span><button class="btn small" data-action="start_routine" data-id="${r.id}">Start</button></div></li>`).join('')}</ul>` : ''}
+${(() => { const ls = d.sessions.find(s => s.id === d.lastFinished && s.date === today); return ls && ls.prs && ls.prs.length ? prBand(ls, units) : ''; })()}
 ${weighRow(dayRec, units, today)}
 ${lastS ? `<h2 class="h2">Last time, ${fmtDate(lastS.date, { weekday: 'long', day: 'numeric', month: 'short' })}</h2>
 <ul class="rows">${(lastS.order || Object.keys(lastS.items)).map(id => { const it = lastS.items[id]; if (!it) return ''; const e = freePlanEx(id, lastS); const done = it.sets.filter(x => x.done); if (!done.length) return '';
@@ -470,6 +494,7 @@ ${ui.picking ? picker(d) : ''}
 </ul>
 <div class="actions" style="margin-top:28px">
   <button class="btn primary block" data-action="finish">Finish workout</button>
+  ${w.exercises.length ? `<button class="link" data-action="save_routine">Save these exercises as a routine</button>` : ''}
   <button class="link" data-action="discard">Discard this workout</button>
 </div>`;
 }
@@ -482,16 +507,31 @@ function picker(d) {
 </div>`;
 }
 
+const MUSCLE_GROUPS = [['chest', /chest/], ['back', /back|lats/], ['shoulders', /shoulder|traps/], ['arms', /biceps|triceps|forearms/], ['legs', /quads|hamstrings|glutes|calves|thighs|hips/], ['core', /core|abs|obliques/], ['cardio', /heart|whole body/]];
+function muscleGroup(ex) { const all = [...(ex.muscles?.primary || []), ...(ex.muscles?.secondary || [])].join(' '); return MUSCLE_GROUPS.filter(([, re]) => re.test(all)).map(([g]) => g); }
+export { MUSCLE_GROUPS, muscleGroup };
+
 function pickList(d, q) {
   const needle = q.trim().toLowerCase();
   const recent = [...new Set(d.sessions.filter(s => s.completed).flatMap(s => s.order || Object.keys(s.items)).reverse())].slice(0, 6);
   const customs = Object.entries(d.customExercises || {}).map(([id, c]) => ({ id, name: c.name, custom: true }));
-  const catalogue = Object.entries(EXERCISES).map(([id, e]) => ({ id, name: e.name }));
+  const have = new Set(d.profile?.equipment || []);
+  const catalogue = Object.entries(EXERCISES).filter(([, e]) => !ui.onlyMine || e.equipment.every(k => have.has(k))).filter(([, e]) => !ui.group || muscleGroup(e).includes(ui.group)).map(([id, e]) => ({ id, name: e.name, sub: (e.muscles?.primary || []).join(', ') }));
   const all = [...customs, ...catalogue];
   const hits = needle ? all.filter(x => x.name.toLowerCase().includes(needle)) : [...recent.map(id => all.find(x => x.id === id)).filter(Boolean), ...all.filter(x => !recent.includes(x.id))];
   const exact = needle && all.some(x => x.name.toLowerCase() === needle);
-  return `<ul class="rows">${hits.slice(0, needle ? 12 : 40).map(x => `<li class="row"><button class="row-head" style="grid-template-columns:1fr auto" data-action="pick" data-id="${x.id}"><span class="row-title">${esc(x.name)}</span><span class="row-meta">${x.custom ? 'yours' : recent.includes(x.id) && !needle ? 'recent' : ''}</span></button></li>`).join('')}
+  return `<div class="chips" style="margin-bottom:8px"><button class="chip ${!ui.group ? 'on' : ''}" data-action="pick_group" data-g="">All</button>${MUSCLE_GROUPS.map(([g]) => `<button class="chip ${ui.group === g ? 'on' : ''}" data-action="pick_group" data-g="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join('')}<button class="chip ${ui.onlyMine ? 'on' : ''}" data-action="pick_mine">My gym only</button></div>
+  <ul class="rows">${hits.slice(0, needle ? 20 : 60).map(x => `<li class="row"><button class="row-head" style="grid-template-columns:1fr auto" data-action="pick" data-id="${x.id}"><span><span class="row-title">${esc(x.name)}</span>${x.sub ? `<br><span class="row-sub">${esc(x.sub)}</span>` : ''}</span><span class="row-meta">${x.custom ? 'yours' : recent.includes(x.id) && !needle ? 'recent' : ''}</span></button></li>`).join('')}
   ${needle && !exact ? `<li class="row"><button class="row-head" style="grid-template-columns:1fr auto" data-action="pick_custom"><span class="row-title">Add "${esc(q.trim())}" as your own exercise</span><span class="row-meta">new</span></button></li>` : ''}</ul>`;
+}
+
+// One line of notes per exercise per session, with the last one shown back.
+function noteRow(e, it) {
+  const prev = store.lastNote(e.exerciseId);
+  return `<div class="noterow">
+    ${prev && !it.note ? `<p class="small muted" style="margin:8px 0 4px">Last note, ${fmtDate(prev.date, { day: 'numeric', month: 'short' })}: “${esc(prev.note)}”</p>` : ''}
+    <input class="input" type="text" maxlength="140" placeholder="Note for this exercise, e.g. felt heavy, left shoulder clicked" value="${esc(it.note || '')}" data-change="exnote" data-ex="${e.exerciseId}" aria-label="Note for ${esc(e.name)}">
+  </div>`;
 }
 
 // ── Rest timer (docked) ─────────────────────────────────────────

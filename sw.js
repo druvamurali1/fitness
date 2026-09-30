@@ -1,10 +1,10 @@
 // Offline cache. Network first when there is signal, so updates show on the
 // next open; the cached copy only serves when the network fails. Bump CACHE
 // when files change so old copies are dropped.
-const CACHE = 'gym-plan-v19';
+const CACHE = 'gym-plan-v20';
 const FILES = ['./', './index.html', './css/app.css', './manifest.webmanifest', './assets/icon.svg',
   './js/app.js', './js/util.js', './js/store.js', './js/generator.js', './js/charts.js',
-  './js/data/exercises.js', './js/data/programs.js', './js/data/diets.js', './js/data/intake.js', './js/data/profiles.js', './js/data/howto.js', './js/data/videos.js',
+  './js/data/exercises.js', './js/data/programs.js', './js/data/diets.js', './js/data/intake.js', './js/data/profiles.js', './js/data/howto.js', './js/data/howto-more.js', './js/data/exercises-more.js', './js/data/videos.js',
   './js/views/ui.js', './js/views/onboarding.js', './js/views/today.js', './js/views/week.js', './js/views/progress.js', './js/views/plan.js', './js/views/exercise.js', './js/views/words.js'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });

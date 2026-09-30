@@ -113,9 +113,9 @@ test('every plan exercise has same-movement fallbacks including one with no equi
   const { swapped } = await import('../js/generator.js');
   const plan = generatePlan(druva);
   const press = plan.workouts[0].exercises.find(e => e.exerciseId === 'db_bench_press');
-  assert.deepEqual(press.alts.map(a => a.id), ['machine_chest_press', 'db_floor_press', 'weighted_push_up']);
+  assert.deepEqual(press.alts.map(a => a.id), ['smith_bench_press', 'machine_chest_press', 'weighted_push_up']);
   const squat = plan.workouts[0].exercises[0];
-  assert.deepEqual(squat.alts.map(a => a.id), ['goblet_squat', 'bodyweight_squat']);
+  assert.deepEqual(squat.alts.map(a => a.id), ['goblet_squat', 'smith_squat', 'bodyweight_squat']);
   for (const w of plan.workouts) for (const e of w.exercises) assert.ok(e.alts.length >= 1, `${e.exerciseId} has no fallback`);
   // A swap keeps the slot's sets and rest but takes the fallback's tool and start weight.
   const sw = swapped(press, 'push_up');
@@ -129,7 +129,7 @@ test('no bench and no machine: the chest slot gets a floor press, not a push-up'
   const noBench = generatePlan({ ...druva, equipment: ['dumbbells', 'cables', 'pullup_bar'] });
   const push = noBench.workouts[0].exercises.find(e => ['db_floor_press', 'db_bench_press', 'machine_chest_press', 'push_up', 'weighted_push_up'].includes(e.exerciseId));
   assert.equal(push.exerciseId, 'db_floor_press');
-  assert.deepEqual(push.alts.map(a => a.id), ['weighted_push_up', 'push_up']);
+  assert.deepEqual(push.alts.map(a => a.id), ['cable_chest_press', 'weighted_push_up', 'push_up']);
   const barOnly = generatePlan({ ...druva, equipment: ['barbell'] });
   const p2 = barOnly.workouts[0].exercises.find(e => e.role === 'secondary');
   assert.equal(p2.exerciseId, 'barbell_floor_press');
@@ -153,4 +153,14 @@ test('stalls, lighter loads, lighter-week timing and recurring pain', async () =
   assert.ok(needsLighterWeek({ plan, sessions: [], stalledCount: 2, today: '2026-08-10' }));
   assert.equal(needsLighterWeek({ plan: { mode: 'free' }, sessions, stalledCount: 5, today: '2026-09-20' }), null);
   assert.deepEqual(recurringPain([{ completed: true, pain: ['knee'] }, { completed: true, pain: [] }, { completed: true, pain: ['knee', 'wrist'] }]), ['knee']);
+});
+
+test('personal records and volume', async () => {
+  const { personalRecords, bestSet, sessionVolumeLb } = await import('../js/generator.js');
+  const older = [{ weightLb: 45, sets: [{ reps: 8, done: true }, { reps: 8, done: true }] }, { weightLb: 55, sets: [{ reps: 6, done: true }] }];
+  const s = { items: { back_squat: { weightLb: 55, sets: [{ reps: 8, done: true }, { reps: 7, done: true }] }, plank: { weightLb: null, sets: [{ reps: 40, done: true }] }, new_one: { weightLb: 20, sets: [{ reps: 10, done: true }] } } };
+  const prs = personalRecords(s, { back_squat: older, plank: [{ weightLb: null, sets: [{ reps: 45, done: true }] }] });
+  assert.deepEqual(prs.map(p => p.exerciseId), ['back_squat']);
+  assert.equal(bestSet(s.items.plank).reps, 40);
+  assert.equal(sessionVolumeLb(s), 55 * 15 + 20 * 10);
 });
