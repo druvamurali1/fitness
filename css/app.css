@@ -73,6 +73,9 @@ button { cursor: pointer; }
 .dock { position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); z-index: 6; width: 100%; max-width: var(--col); margin: 0 auto; }
 @media (min-width: 900px) {
   .app { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; }
+  .app:has(.nav[hidden]) { grid-template-columns: 1fr; }
+  .app:has(.nav[hidden]) .view, .app:has(.nav[hidden]) .dock { grid-column: 1; }
+  .view { max-width: 680px; }
   .nav { grid-column: 1; grid-row: 1 / span 2; position: sticky; top: 0; height: 100dvh; align-self: start; grid-template-columns: 1fr; align-content: start; border-top: 0; border-right: 1px solid var(--rule); padding-top: 24px; }
   .nav a { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 24px; min-height: 0; font-size: 16px; }
   .nav a[aria-current="page"] { box-shadow: inset 4px 0 0 var(--accent); }
