@@ -13,6 +13,7 @@ Status (end of 2026-09-30): live at https://druvamurali1.github.io/fitness/ and 
 Built and live today, in order: interview and generator; (later) a 161-exercise library with muscle and equipment filters, notes, personal records, finish summary, measurements, routines; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; labelled Done buttons.
 
 Open items, none started:
+- Parked by the owner on 2026-09-30: animated 3D exercise demos (Hevy style). Options already laid out to him: license a library (Gym Visual, ExerciseDB), build via phone video + AI motion capture + Blender with a Z-Anatomy body (Claude writes the Blender scripts), or hire an animator. Recommended a three-exercise pilot. A static front/back muscle map was mocked up and approved in principle but also not built yet.
 - Druva has not yet trained with the app. First real feedback comes after Friday 2 Oct. Expect wording and layout notes from the gym floor.
 - Staged diet (trainer's recommendation, not in the app): weeks 1 and 2 add only the shake and the 4:30 protein; breakfast from week 3. The app still shows the full six-meal day from day one.
 - Deadlift at 3 × 5 as an option if his back rounds at reps 7 and 8. Decide after his first two sessions.
@@ -83,7 +84,7 @@ Palette from the gym photos: chalk `#EDEFEA`, rubber-floor charcoal `#23272B`, H
 
 Two signature elements, and they are the only places the design is loud:
 - `.hero.floor`: the charcoal band at the top of Today and the welcome screen (the rubber floor), with the workout letter in chalk, the primary button, and during a session a strip of set segments that fill yellow.
-- `.donebtn` inside a `.setrow`: the set-done control is a button that says "Done", and the whole row turns yellow with a ✓ in the tag when pressed. The earlier hollow-pin control was dropped because the owner could not tell a set had been captured; do not bring back unlabelled toggles for anything that logs. Motion is limited to row expansion and the timer; all of it is off under `prefers-reduced-motion`.
+- In-session logging follows Hevy, at the owner's request: a slim sticky `.sbar` (title, Time, Volume, Sets, Finish) replaces the floor band during a session; each exercise is an `.exb` block (round video thumbnail, name, one guidance line, ⋮ menu with how-to, swap, note, remove; rest time) over an `.st` set table with columns Set, Previous, weight, reps, ✓. Each set carries its own weight (`set.w`, lb); `syncWeight()` keeps `item.weightLb` as the heaviest done set for progression. Done = the ✓ square fills yellow and the whole row tints yellow; the row tint is what makes the state unmistakable, so never ship a done control without it. The earlier labelled "Done" button and the hollow pin before it are gone from set rows. Motion is limited to row tint and the timer; all of it is off under `prefers-reduced-motion`.
 
 - `.wk-strip` on Week: seven columns inside the floor band, a tall block per day for the workout and two small blocks for protein and water. Filled yellow when done, rust outline for a missed lifting day, chrome outline for a planned one, chalk ring on the selected day.
 - `.pip`: tappable circles for counted targets (protein portions, meals, water, beers). Tap the n-th pip to set the count to n; tap the last filled one to step back. Same hole-and-pin look as the set control. Use pips for any small integer target; use a stepper only for real numbers (weight, reps, sleep).
@@ -109,7 +110,7 @@ Everything else stays quiet: rules instead of cards, no shadows, no all-caps lab
 
 - He tests on his phone and reports from the gym; every change ships by `git push` and the phone picks it up on the next open (network-first service worker, auto-reload).
 - Every visible change gets checked in the in-app browser at phone width before pushing; screenshots, not assumptions.
-- Anything that logs uses a labelled button. Anything counted uses pips. Every screen opens with the floor band and its numbers.
+- Set logging uses the Hevy-style table with a tinted row on done. Anything counted uses pips. Every screen except an active session opens with the floor band and its numbers.
 - Trainer voice: blunt, plain words, push back on the plan when the science says so, and say which parts are his to do.
 
 ## Known gaps

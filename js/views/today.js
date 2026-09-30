@@ -38,9 +38,11 @@ export function renderToday(root, ctx) {
     swap_open: el => { ui.swapping = el.dataset.ex; renderToday(root, ctx); },
     swap_close: () => { ui.swapping = null; renderToday(root, ctx); },
     swap: el => { const { from, to } = el.dataset; const planEx = findPlanEx(plan, session, from); const alt = swapped(planEx, to); const h = store.exerciseHistory(to); const sug = suggestNext(alt, h);
-      ui.swapping = null; if (ui.step === from) ui.step = to; ui.expanded.delete('ex:' + from); ui.expanded.add('ex:' + to);
+      ui.swapping = null; ui.menu = null; if (ui.step === from) ui.step = to; ui.expanded.delete('ex:' + from); ui.expanded.add('ex:' + to);
       store.swapExercise(session.id, from, to, sug.loadLb, sug); },
-    add_set: el => { const ex = el.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets.push({ reps: null, done: false }); }); },
+    add_set: el => { const ex = el.dataset.ex; store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const prev = it.sets[it.sets.length - 1]; it.sets.push({ reps: null, done: false, w: prev ? (prev.w ?? it.weightLb) : it.weightLb }); }); },
+    menu: el => { const id = el.dataset.ex; ui.menu = ui.menu === id ? null : id; ui.swapping = null; renderToday(root, ctx); },
+    note_edit: el => { const id = el.dataset.ex; ui.noteEditing = ui.noteEditing === id ? null : id; ui.menu = null; renderToday(root, ctx); root.querySelector('.exb-noteinput')?.focus(); },
     remove_ex: el => { const ex = el.dataset.ex; store.update(x => { const s = x.sessions.find(s => s.id === session.id); delete s.items[ex]; s.order = s.order.filter(k => k !== ex); }); },
     start_deload: () => { const from = isoDate(); store.update(x => { x.deload = { from, until: addDays(from, 6) }; }); },
     snooze_deload: () => { const from = addDays(isoDate(), -7); store.update(x => { x.deload = { from, until: addDays(isoDate(), -1), snoozed: true }; }); },
@@ -56,31 +58,30 @@ export function renderToday(root, ctx) {
     toggle: el => { const k = el.dataset.key; ui.expanded.has(k) ? ui.expanded.delete(k) : ui.expanded.add(k); renderToday(root, ctx); },
     cues: el => { const k = el.dataset.key; ui.showCues.has(k) ? ui.showCues.delete(k) : ui.showCues.add(k); renderToday(root, ctx); },
     check: el => { const k = el.dataset.key; store.update(x => { const s = x.sessions.find(s => s.id === session.id); s.checklist[k] = !s.checklist[k]; }); },
-    load: el => { const { ex, dir } = el.dataset; const planEx = findPlanEx(plan, session, ex); const step = loadStep(units.load, planEx.loadType) * (dir === 'up' ? 1 : -1);
-      store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const shown = displayLoad(it.weightLb ?? 0, units.load, planEx.loadType); it.weightLb = Math.max(0, toCanonicalLb(shown + step, units.load)); }); },
-    reps: el => { const { ex, i, dir } = el.dataset; store.update(x => { const set = x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)]; set.reps = Math.min(300, Math.max(0, (set.reps ?? 0) + (dir === 'up' ? 1 : -1))); }); },
     done: el => { const { ex, i } = el.dataset; const planEx = findPlanEx(plan, session, ex); try { navigator.vibrate && navigator.vibrate(15); } catch {}
-      store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const set = it.sets[Number(i)]; set.done = !set.done;
+      store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const set = it.sets[Number(i)]; set.done = !set.done; if (set.w == null) set.w = it.weightLb;
         if (set.done && set.reps == null) {
           // Blank reps: reuse the previous set in this session, then last session's same set, then the plan's minimum.
           const prev = it.sets.slice(0, Number(i)).reverse().find(s => s.done && s.reps != null);
           const hist = store.exerciseHistory(ex); const last = hist.length ? hist[hist.length - 1] : null;
           set.reps = prev ? prev.reps : (last && last.sets[Number(i)] && last.sets[Number(i)].reps != null ? last.sets[Number(i)].reps : (planEx.repMin ?? null));
-        } });
+        }
+        syncWeight(it); });
       const it = store.load().sessions.find(s => s.id === session.id).items[ex];
       if (it.sets[Number(i)].done) { const last = Number(i) === it.sets.length - 1; if (!last) startTimer(planEx.restSeconds); else { startTimer(planEx.restSeconds); const w = currentWorkout(plan, session); const nxt = nextUnfinished(store.load().sessions.find(s => s.id === session.id), w); if (nxt) ui.expanded.add(nxt); } }
       renderToday(root, ctx); },
     finish: () => { if (!session) return; const doneSets = countDone(session); if (doneSets === 0 && !confirm('No sets logged. Finish anyway? It will count as a completed session.')) return;
-      if (!session.painAsked && session.source !== 'free') { ui.mode = 'guided'; ui.step = 'finish'; renderToday(root, ctx); root.querySelector('.painrow')?.scrollIntoView({ block: 'center' }); return; }
+      if (!session.painAsked && session.source !== 'free') { if (ui.mode === 'guided') ui.step = 'finish'; renderToday(root, ctx); root.querySelector('.painrow')?.scrollIntoView({ block: 'center' }); root.querySelector('.painrow')?.classList.add('ask'); return; }
       stopTimer(); const hist = Object.fromEntries(Object.keys(session.items).map(id => [id, store.exerciseHistory(id)])); const prs = personalRecords(session, hist); store.finishSession(session.id, prs); ui.expanded.clear(); ui.step = null; afterFinish(d); },
     discard: () => { if (confirm('Throw this session away? Nothing from it will be saved.')) { stopTimer(); store.abandonSession(session.id); ui.step = null; } },
     cardio_done: () => { const cur = store.day(today).cardio; store.setDay(today, { cardio: !cur }); },
   });
   root.querySelectorAll('[data-change="weight"]').forEach(inp => inp.onchange = () => { const kg = bodyFromInput(inp.value, units); if (kg != null && (kg < 30 || kg > 250)) { inp.value = ''; alert(units.body === 'lb' ? 'Weight should be between 66 and 551 lb.' : 'Weight should be between 30 and 250 kg.'); return; } store.setDay(today, { weightKg: kg }); });
   const q = root.querySelector('[data-change="q"]'); if (q) q.oninput = () => { ui.q = q.value; const list = root.querySelector('#picklist'); if (list) list.innerHTML = pickList(d, ui.q); };
-  root.querySelectorAll('[data-change="exnote"]').forEach(inp => inp.onchange = () => store.setExerciseNote(session.id, inp.dataset.ex, inp.value.trim().slice(0, 140)));
+  root.querySelectorAll('[data-change="exnote"]').forEach(inp => inp.onchange = () => { ui.noteEditing = null; store.setExerciseNote(session.id, inp.dataset.ex, inp.value.trim().slice(0, 140)); });
+  root.querySelectorAll('[data-change="setw"]').forEach(inp => inp.onchange = () => { const { ex, i } = inp.dataset; const lb = Math.min(2500, Math.max(0, toCanonicalLb(Number(inp.value) || 0, units.load)));
+    store.update(x => { const it = x.sessions.find(s => s.id === session.id).items[ex]; const n = Number(i); it.sets[n].w = lb; for (let k = n + 1; k < it.sets.length; k++) if (!it.sets[k].done) it.sets[k].w = lb; syncWeight(it); }); });
   root.querySelectorAll('[data-change="repsin"]').forEach(inp => inp.onchange = () => { const { ex, i } = inp.dataset; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets[Number(i)].reps = Math.min(300, Math.max(0, Math.round(Number(inp.value) || 0))); }); });
-  root.querySelectorAll('[data-change="loadin"]').forEach(inp => inp.onchange = () => { const ex = inp.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].weightLb = Math.min(2500, Math.max(0, toCanonicalLb(Number(inp.value) || 0, units.load))); }); });
 }
 
 // ── First run: how this works ───────────────────────────────────
@@ -264,8 +265,7 @@ function prefill(s, w, d) {
     const it = s.items[e.exerciseId];
     it.weightLb = s.deload ? lighterLoad(sug.loadLb, e.loadType) : sug.loadLb; it.suggested = s.deload ? { loadLb: it.weightLb, reason: 'deload' } : sug;
     if (s.deload) it.sets = it.sets.slice(0, 2);
-    const last = h.length ? h[h.length - 1] : null;
-    it.sets.forEach((set, i) => { set.reps = last && last.sets[i] && last.sets[i].done ? last.sets[i].reps : null; });
+    it.sets.forEach(set => { set.w = it.weightLb; set.reps = null; });
   }
 }
 function currentWorkout(plan, s) {
@@ -285,6 +285,9 @@ function freePlanEx(id, s) {
     measure: ex && (ex.loadType === 'time' || ex.pattern === 'grip') ? 'seconds' : 'reps', loadType: ex ? ex.loadType : 'free',
     startLoadLb: ex ? (ex.start ? ex.start.lb : null) : null, incrementLb: ex?.increment?.lb ?? 5, restSeconds: 90, cues: ex?.cues || [], altId: null, free: true };
 }
+// The item's working weight is the heaviest completed set (the first set's weight
+// until one is done). Progression and history read this one number.
+function syncWeight(it) { const ws = it.sets.filter(x => x.done && x.w != null).map(x => x.w); it.weightLb = ws.length ? Math.max(...ws) : (it.sets[0]?.w ?? it.weightLb); }
 function countDone(s) { return Object.values(s.items).reduce((a, it) => a + it.sets.filter(x => x.done).length, 0); }
 function nextUnfinished(s, w) { const e = w.exercises.find(e => s.items[e.exerciseId].sets.some(x => !x.done)); return e ? 'ex:' + e.exerciseId : null; }
 
@@ -300,21 +303,26 @@ function currentStep(s, w) {
 
 function sessionView(d, s, units) {
   const plan = d.plan, w = currentWorkout(plan, s);
-  const total = w.exercises.reduce((a, e) => a + e.sets, 0), done = countDone(s);
-  const mins = Math.round((Date.now() - s.startedAt) / 60000);
   const learning = isLearning(d, w);
+  const note = s.deload ? 'Lighter week: seventy percent, two sets.' : learning ? 'Learning session: light weight, good form.' : '';
   return `
-<header class="hero floor live">
-  <div class="hero-date">${fmtDate(s.date)}, ${mins} min in</div>
-  <div class="display-words">${esc(w.focus)}</div>
-  <p class="sub">Workout ${esc(w.id)}. ${done} of ${total} sets logged.${s.deload ? ' Lighter week: seventy percent, two sets.' : learning ? ' Learning session: light and careful.' : ''}</p>
-  <div class="stack" aria-hidden="true">${Array.from({ length: total }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>
-</header>
+${sessionBar(s, w, units, `Workout ${esc(w.id)}: ${esc(w.focus)}`)}
+${note ? `<p class="small muted" style="margin:0 0 10px">${note}</p>` : ''}
 <div class="seg modeswitch"><button aria-pressed="${ui.mode === 'guided'}" data-action="mode" data-mode="guided">One at a time</button><button aria-pressed="${ui.mode === 'list'}" data-action="mode" data-mode="list">Whole workout</button></div>
 ${ui.mode === 'guided' ? guided(d, s, w, units) : list(d, s, w, units)}
-<div class="actions" style="margin-top:28px">
-  ${ui.mode === 'list' ? `${painRow(s)}<button class="btn primary block" data-action="finish">Finish session</button>` : ''}
-  <button class="link" data-action="discard">Discard this session</button>
+<div class="actions" style="margin-top:20px"><button class="link" data-action="discard">Discard this session</button></div>`;
+}
+
+// The slim bar on top of every session: what, how long, how much, and Finish.
+function sessionBar(s, w, units, title) {
+  const mins = Math.round((Date.now() - s.startedAt) / 60000);
+  const sets = Object.values(s.items).reduce((a, it) => a + it.sets.filter(x => x.done).length, 0);
+  const total = w.exercises.reduce((a, e) => a + (s.items[e.exerciseId]?.sets.length || 0), 0);
+  const vol = sessionVolumeLb(s);
+  const volShown = units.load === 'kg' ? Math.round(vol / 2.2046) : Math.round(vol);
+  return `<div class="sbar">
+  <div class="sbar-top"><span class="sbar-title">${title}</span><button class="btn primary small" data-action="finish">Finish</button></div>
+  <div class="sbar-stats"><div><span>Time</span><b>${mins < 60 ? mins + ' min' : Math.floor(mins / 60) + 'h ' + (mins % 60) + 'min'}</b></div><div><span>Volume</span><b>${fmtNum(volShown)} ${units.load}</b></div><div><span>Sets</span><b>${sets}${total ? ' of ' + total : ''}</b></div></div>
 </div>`;
 }
 
@@ -322,110 +330,106 @@ function guided(d, s, w, units) {
   const plan = d.plan, steps = stepsOf(w), cur = currentStep(s, w), i = steps.indexOf(cur);
   const prev = steps[i - 1], next = steps[i + 1];
   const top = `<div class="topbar">${prev ? `<button class="back" data-action="go" data-step="${prev}">${CHEV}Back</button>` : '<span></span>'}<span class="small muted">${i + 1} of ${steps.length}</span></div>`;
-  const nav = next ? `<div class="actions" style="margin-top:22px"><button class="btn block" data-action="go" data-step="${next}">${next === 'finish' ? 'Finish up' : 'Next: ' + esc(next === 'warmup' ? 'Warm up' : w.exercises.find(e => e.exerciseId === next).name)}</button></div>` : '';
+  const nav = next ? `<div class="actions" style="margin-top:18px"><button class="btn block" data-action="go" data-step="${next}">${next === 'finish' ? 'Finish up' : 'Next: ' + esc(w.exercises.find(e => e.exerciseId === next).name)}</button></div>` : '';
   if (cur === 'warmup') {
-    return `${top}<section class="stepcard">
-      <div class="wo-head"><span class="tag big">0</span><div><span class="small muted">First</span><h2 class="title" style="margin-top:2px">Warm up</h2></div></div>
+    return `${top}<section class="exb">
+      <div class="exb-head"><span class="exb-thumb tag">0</span><div class="exb-name"><b>Warm up</b><span class="exb-sub">About five minutes</span></div></div>
       <ol class="steps-list">${plan.warmup.map(x => `<li>${esc(x.text)}</li>`).join('')}</ol>
       <button class="btn ${s.checklist.warmup ? 'quiet' : 'primary'} block" data-action="check" data-key="warmup">${s.checklist.warmup ? 'Warm-up done ✓' : 'Warm-up done'}</button>
     </section>${nav}`;
   }
-  if (cur === 'finish') {
-    const left = w.exercises.filter(e => s.items[e.exerciseId].sets.some(x => !x.done));
-    return `${top}<section class="stepcard">
-      <div class="wo-head"><span class="tag big">✓</span><div><span class="small muted">Last</span><h2 class="title" style="margin-top:2px">Finish up</h2></div></div>
-      ${left.length ? `<p class="warn small">Not logged: ${left.map(e => esc(e.name)).join(', ')}. Fine if you skipped them; go back if you forgot to tap.</p>` : ''}
-      ${painRow(s)}
-      <div class="log">
-        <div class="logrow"><div class="logl"><b>Cool down</b><span>${plan.cooldown.map(x => esc(x.text)).join(' ')}</span></div><button class="donebtn" aria-pressed="${s.checklist.cooldown}" data-action="check" data-key="cooldown">${s.checklist.cooldown ? 'Done ✓' : 'Done'}</button></div>
-        <div class="logrow"><div class="logl"><b>Protein</b><span>${esc(plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.')}</span></div><button class="donebtn" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein">${s.checklist.protein ? 'Done ✓' : 'Done'}</button></div>
-      </div>
-      <button class="btn primary block" style="margin-top:20px" data-action="finish">Finish session</button>
-    </section>${nav}`;
-  }
-  const e = w.exercises.find(e => e.exerciseId === cur), it = s.items[cur], idx = w.exercises.indexOf(e);
-  const where = plan.equipmentNotes?.[HOWTO[cur]?.where];
-  const v = VIDEOS[cur];
-  return `${top}<section class="stepcard">
-    <div class="wo-head"><span class="tag big">${idx + 1}</span><div><span class="small muted">Exercise ${idx + 1} of ${w.exercises.length}</span><h2 class="title" style="margin-top:2px"><a href="#exercise/${cur}" class="title-link">${esc(e.name)}</a></h2></div></div>
-    <div class="stats compact">
-      <div><b>${e.sets}${e.repMin != null ? ` × ${e.repMin}–${e.repMax}` : ''}</b><span>sets${e.repMin != null ? ` × ${e.measure === 'seconds' ? 'seconds' : 'reps'}` : ''}</span></div>
-      <div><b class="txt">${e.startLoadLb != null ? esc(loadShort(it.weightLb ?? e.startLoadLb, units, e.loadType).replace(/^pin /, '').replace(/ each$/, '')) : 'body'}</b><span>${e.startLoadLb != null ? (e.loadType === 'dumbbell' ? 'each hand' : e.loadType === 'stack' ? 'on the pin' : 'on the bar') : 'weight'}</span></div>
-      <div><b>${e.restSeconds >= 60 ? fmtNum(e.restSeconds / 60, 1) : e.restSeconds}<span class="of">${e.restSeconds >= 60 ? 'min' : 's'}</span></b><span>rest</span></div>
-    </div>
-    ${swapBlock(e, s)}
-    <a class="howto" href="#exercise/${cur}">${v ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy">` : '<span class="howto-ph"></span>'}<span><b>How to do it</b><span class="small muted">${where ? esc(where.split('. ')[0].replace(/\.$/, '')) + '.' : 'Video, setup, steps, mistakes.'}</span></span><span class="chev" aria-hidden="true">▸</span></a>
-    ${setGrid(e, it, units, d)}
-  </section>${nav}`;
+  if (cur === 'finish') return `${top}${finishBlock(d, s, w)}`;
+  const e = w.exercises.find(e => e.exerciseId === cur);
+  return `${top}${exBlock(e, s.items[cur], units, d, s)}${nav}`;
 }
 
 function list(d, s, w, units) {
   const plan = d.plan;
-  return `<ul class="rows">
-  ${checkRow('warmup', 'Warm-up', plan.warmup.map(x => x.text), s)}
-  ${w.exercises.map(e => exerciseRow(e, s.items[e.exerciseId], units, d)).join('')}
-  ${checkRow('cooldown', 'Cool-down', plan.cooldown.map(x => x.text), s)}
-  ${checkRow('protein', 'Protein', [plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.'], s)}
-</ul>`;
+  return `<div class="exb warm ${s.checklist.warmup ? 'done' : ''}">
+    <div class="exb-head"><span class="exb-thumb tag">0</span><div class="exb-name"><b>Warm up</b><span class="exb-sub">${esc(plan.warmup.map(x => x.text.split('.')[0]).join('. '))}.</span></div>
+    <button class="st-ok" aria-pressed="${s.checklist.warmup}" data-action="check" data-key="warmup" aria-label="Warm-up done">✓</button></div>
+  </div>
+  ${w.exercises.map(e => exBlock(e, s.items[e.exerciseId], units, d, s)).join('')}
+  ${finishBlock(d, s, w)}`;
 }
 
-function checkRow(key, title, lines, s) {
-  const on = s.checklist[key], open = ui.expanded.has(key);
-  return `<li class="row ${on ? 'done' : ''}" aria-expanded="${open}">
-  <div class="row-head"><button class="row-mark" style="border:0;background:${on ? 'var(--accent)' : 'transparent'};box-shadow:0 0 0 2px ${on ? 'var(--accent)' : 'var(--rule-strong)'}" data-action="check" data-key="${key}" aria-pressed="${on}" aria-label="${on ? 'Undo' : 'Done'}: ${esc(title)}">${on ? '✓' : ''}</button>
-    <button class="row-head" style="padding:0;grid-template-columns:1fr auto" data-action="toggle" data-key="${key}"><span class="row-title">${esc(title)}</span><span class="chev" aria-hidden="true">▸</span></button></div>
-  <div class="row-body"><ul class="cues">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`;
-}
-
-function exerciseRow(e, it, units, d) {
-  const key = 'ex:' + e.exerciseId, open = ui.expanded.has(key), allDone = it.sets.every(x => x.done), anyDone = it.sets.some(x => x.done);
-  const shownLoad = it.weightLb == null ? null : displayLoad(it.weightLb, units.load, e.loadType);
-  return `<li class="row ${allDone ? 'done' : ''}" aria-expanded="${open}">
-  <button class="row-head" data-action="toggle" data-key="${key}" aria-expanded="${open}">
-    <span class="row-mark">${allDone ? '✓' : anyDone ? it.sets.filter(x => x.done).length : ''}</span>
-    <span><span class="row-title">${esc(e.name)}</span><span class="chev" aria-hidden="true">▸</span><br><span class="row-sub">${esc(setsText(e))}</span></span>
-    <span class="row-meta">${shownLoad != null ? `${fmtNum(shownLoad, 1)} ${units.load}` : ''}</span>
-  </button>
-  <div class="row-body"><a class="link" href="#exercise/${e.exerciseId}">How to do it</a>${swapBlock(e, null)}${setGrid(e, it, units, d)}</div></li>`;
-}
-
-function setGrid(e, it, units, d) {
-  const h = store.exerciseHistory(e.exerciseId); const last = h.length ? h[h.length - 1] : null;
-  const lastText = last ? `Last time: ${last.weightLb != null ? loadText(last.weightLb, units, e.loadType) + ', ' : ''}${last.sets.filter(x => x.done).map(x => x.reps).join(', ')} ${e.measure === 'seconds' ? 'seconds' : 'reps'}.` : 'First time doing this.';
-  const sug = it.suggested || {};
-  const sugLine = sug.reason === 'deload' ? 'Lighter week: seventy percent, two sets, nothing added. Move well, leave the gym feeling fresh.'
-    : e.free ? ''
-    : sug.reason === 'up' ? `Up from last time, because every set hit ${e.repMax}.`
-    : sug.reason === 'down' ? 'Two sessions under the range, so ten percent off. Build back.'
-    : sug.reason === 'start' ? 'A guess at a starting weight. If a set feels like you could do 5 more, add weight next set.'
-    : sug.reason === 'bodyweight' ? `Aim for ${e.repMax}. Once every set gets there, make it harder next time.`
-    : 'Same weight as last time.';
-  const shownLoad = it.weightLb == null ? null : displayLoad(it.weightLb, units.load, e.loadType);
-  return `
-    <p class="small muted" style="margin:10px 0 4px">${esc(lastText)} ${esc(sugLine)}</p>
-    ${shownLoad != null ? `<div class="load-line"><span class="lbl-inline">Weight</span><div class="stepper" aria-label="Load"><button type="button" data-action="load" data-ex="${e.exerciseId}" data-dir="down" aria-label="Less weight">−</button><input type="number" inputmode="decimal" step="any" value="${fmtNum(shownLoad, 1)}" data-change="loadin" data-ex="${e.exerciseId}" aria-label="Weight in ${units.load}"><button type="button" data-action="load" data-ex="${e.exerciseId}" data-dir="up" aria-label="More weight">+</button></div><span class="small muted">${units.load}${e.loadType === 'dumbbell' ? ' each hand' : e.loadType === 'barbell' ? ' incl. bar' : ''}</span></div>` : ''}
-    <div class="setlist">
-      <div class="setlist-head"><span>Set</span><span>${e.measure === 'seconds' ? 'Seconds' : 'Reps'} you did${e.repMin != null ? ` (aim ${e.repMin}–${e.repMax})` : ''}</span><span></span></div>
-      ${it.sets.map((set, i) => `<div class="setrow ${set.done ? 'done' : ''}">
-        <span class="tag">${set.done ? '✓' : i + 1}</span>
-        <div class="stepper"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="down" aria-label="Fewer">−</button><input type="number" inputmode="numeric" value="${set.reps ?? ''}" placeholder="${e.repMin ?? ''}" data-change="repsin" data-ex="${e.exerciseId}" data-i="${i}" aria-label="Set ${i + 1} ${e.measure}"><button type="button" data-action="reps" data-ex="${e.exerciseId}" data-i="${i}" data-dir="up" aria-label="More">+</button></div>
-        <button type="button" class="donebtn" aria-pressed="${set.done}" data-action="done" data-ex="${e.exerciseId}" data-i="${i}">${set.done ? 'Done ✓' : 'Done'}</button>
-      </div>`).join('')}
+// End of a plan session: pain check, cool-down, protein, Finish.
+function finishBlock(d, s, w) {
+  const plan = d.plan;
+  const left = w.exercises.filter(e => s.items[e.exerciseId].sets.some(x => !x.done));
+  return `<section class="exb">
+    <div class="exb-head"><span class="exb-thumb tag">✓</span><div class="exb-name"><b>Finish up</b><span class="exb-sub">Three quick things, then Finish</span></div></div>
+    ${left.length && left.length < w.exercises.length ? `<p class="small warn" style="margin:0 0 8px">Not logged: ${left.map(e => esc(e.name)).join(', ')}.</p>` : ''}
+    ${painRow(s)}
+    <div class="log">
+      <div class="logrow"><div class="logl"><b>Cool down</b><span>${esc(plan.cooldown.map(x => x.text.split('.')[0]).join('. '))}.</span></div><button class="st-ok" aria-pressed="${s.checklist.cooldown}" data-action="check" data-key="cooldown" aria-label="Cool-down done">✓</button></div>
+      <div class="logrow"><div class="logl"><b>Protein</b><span>${esc(plan.diet.meals.find(m => m.slot === 'post')?.text || 'Protein within an hour.')}</span></div><button class="st-ok" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein" aria-label="Protein done">✓</button></div>
     </div>
-    ${e.free ? `<div class="actions inline" style="margin:10px 0 0"><button class="btn quiet small" data-action="add_set" data-ex="${e.exerciseId}">Add a set</button><button class="link" data-action="remove_ex" data-ex="${e.exerciseId}">Remove exercise</button></div>` : ''}
-    ${noteRow(e, it)}
-    <p class="small muted" style="margin-top:10px">Tap Done after each set. The row turns yellow and the rest timer starts.</p>`;
+    <button class="btn primary block" style="margin-top:16px" data-action="finish">Finish session</button>
+  </section>`;
 }
 
-// "Busy or missing? Swap." Shows the fallbacks for this slot; one tap replaces
-// the exercise for this session only.
-function swapBlock(e, s) {
-  if (!e.alts || !e.alts.length) return '';
-  const open = ui.swapping === e.exerciseId;
-  return `<div class="swap">
-    ${e.swappedFrom ? `<p class="small muted" style="margin:0 0 6px">Swapped in for ${esc(EXERCISES[e.swappedFrom]?.name || e.swappedFrom)} this session. Weights do not carry over; start where the app suggests.</p>` : ''}
-    <button class="link" data-action="${open ? 'swap_close' : 'swap_open'}" data-ex="${e.exerciseId}">${open ? 'Keep ' + esc(e.name) : 'Busy or missing? Swap it'}</button>
-    ${open ? `<ul class="rows tight" style="margin-top:6px">${e.alts.map((a, i) => `<li class="row"><button class="row-head" style="grid-template-columns:34px 1fr auto" data-action="swap" data-from="${e.exerciseId}" data-to="${a.id}"><span class="tag">${i + 1}</span><span class="row-title">${esc(a.name)}</span><span class="row-meta">${i === e.alts.length - 1 && EXERCISES[a.id]?.equipment.length === 0 ? 'no equipment' : 'same movement'}</span></button></li>`).join('')}</ul>` : ''}
+// One exercise, Hevy-style: a header, one line of guidance, the rest time,
+// and a table of sets. Everything else lives behind the ⋮ menu.
+function exBlock(e, it, units, d, s) {
+  const id = e.exerciseId, v = VIDEOS[id];
+  const hasLoad = !['body', 'time'].includes(e.loadType);
+  const h = store.exerciseHistory(id); const last = h.length ? h[h.length - 1] : null;
+  const prevNote = store.lastNote(id);
+  const menuOpen = ui.menu === id;
+  const rest = e.restSeconds >= 60 ? `${fmtNum(e.restSeconds / 60, 1)} min` : `${e.restSeconds} s`;
+  const shown = lb => lb == null ? '' : fmtNum(displayLoad(lb, units.load, e.loadType), 1);
+  return `<section class="exb" id="ex-${id}">
+    <div class="exb-head">
+      <a class="exb-thumb" href="#exercise/${id}" aria-label="How to do ${esc(e.name)}">${v ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy">` : esc(e.name[0])}</a>
+      <div class="exb-name"><a href="#exercise/${id}">${esc(e.name)}</a><span class="exb-sub">${esc(subline(e, it))}</span></div>
+      <button class="exb-more" data-action="menu" data-ex="${id}" aria-expanded="${menuOpen}" aria-label="More for ${esc(e.name)}">⋮</button>
+    </div>
+    ${menuOpen ? menuHtml(e) : ''}
+    ${e.swappedFrom ? `<p class="exb-line muted">Swapped in for ${esc(EXERCISES[e.swappedFrom]?.name || e.swappedFrom)} this session.</p>` : ''}
+    ${ui.noteEditing === id
+      ? `<input class="input exb-noteinput" type="text" maxlength="140" placeholder="Felt heavy, left shoulder clicked" value="${esc(it.note || '')}" data-change="exnote" data-ex="${id}" aria-label="Note for ${esc(e.name)}">`
+      : it.note ? `<p class="exb-line">${esc(it.note)}</p>`
+      : prevNote ? `<p class="exb-line muted">Last time: “${esc(prevNote.note)}”</p>` : ''}
+    <p class="exb-rest"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9v4l2 2M9 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Rest ${rest}</p>
+    <div class="st ${hasLoad ? '' : 'noload'}">
+      <div class="st-h"><span>Set</span><span>Previous</span>${hasLoad ? `<span>${units.load}</span>` : ''}<span>${e.measure === 'seconds' ? 'Secs' : 'Reps'}</span><span aria-label="Done">✓</span></div>
+      ${it.sets.map((set, i) => { const p = last && last.sets[i]; const pw = p ? (p.w ?? last.weightLb) : null;
+        const prevText = p && p.done && p.reps ? (hasLoad && pw ? `${shown(pw)} × ${p.reps}` : `${p.reps}`) : '–';
+        return `<div class="st-r ${set.done ? 'done' : ''}">
+        <span class="st-n">${i + 1}</span>
+        <span class="st-prev">${prevText}</span>
+        ${hasLoad ? `<input type="number" inputmode="decimal" step="any" value="${shown(set.w ?? it.weightLb)}" placeholder="0" data-change="setw" data-ex="${id}" data-i="${i}" aria-label="Set ${i + 1} weight in ${units.load}">` : ''}
+        <input type="number" inputmode="numeric" value="${set.reps ?? ''}" placeholder="${(p && p.reps) || e.repMin || ''}" data-change="repsin" data-ex="${id}" data-i="${i}" aria-label="Set ${i + 1} ${e.measure}">
+        <button class="st-ok" aria-pressed="${set.done}" data-action="done" data-ex="${id}" data-i="${i}" aria-label="Set ${i + 1} ${set.done ? 'done, tap to undo' : 'done'}">✓</button>
+      </div>`; }).join('')}
+    </div>
+    <button class="st-add" data-action="add_set" data-ex="${id}">+ Add set</button>
+  </section>`;
+}
+
+// One line under the exercise name: the target and the weight advice.
+function subline(e, it) {
+  const parts = [];
+  if (e.repMin != null) parts.push(`Aim ${e.repMin}–${e.repMax} ${e.measure === 'seconds' ? 'seconds' : 'reps'}`);
+  const sug = it.suggested || {};
+  if (sug.reason === 'deload') parts.push('Lighter week');
+  else if (sug.reason === 'up') parts.push('Weight up from last time');
+  else if (sug.reason === 'down') parts.push('Ten percent off, build back');
+  else if (sug.reason === 'start') parts.push('Start light');
+  if (e.loadType === 'dumbbell') parts.push('Weight is per hand');
+  return parts.join('. ');
+}
+
+function menuHtml(e) {
+  const id = e.exerciseId;
+  const swapping = ui.swapping === id;
+  return `<div class="exb-menu">
+    <a href="#exercise/${id}">How to do it</a>
+    ${e.alts && e.alts.length ? `<button data-action="${swapping ? 'swap_close' : 'swap_open'}" data-ex="${id}">Swap exercise</button>` : ''}
+    ${swapping ? `<div class="exb-alts">${e.alts.map(a => `<button data-action="swap" data-from="${id}" data-to="${a.id}">${esc(a.name)}<span>${EXERCISES[a.id]?.equipment.length === 0 ? 'no equipment' : 'same movement'}</span></button>`).join('')}</div>` : ''}
+    <button data-action="note_edit" data-ex="${id}">${ui.noteEditing === id ? 'Done with note' : 'Add a note'}</button>
+    ${e.free ? `<button class="warn" data-action="remove_ex" data-ex="${id}">Remove exercise</button>` : ''}
   </div>`;
 }
 
@@ -477,22 +481,13 @@ ${lastS ? `<h2 class="h2">Last time, ${fmtDate(lastS.date, { weekday: 'long', da
 
 function freeSessionView(d, s, units) {
   const plan = d.plan, w = currentWorkout(plan, s);
-  const total = w.exercises.reduce((a, e) => a + e.sets, 0), done = countDone(s);
-  const mins = Math.round((Date.now() - s.startedAt) / 60000);
   return `
-<header class="hero floor live">
-  <div class="hero-date">${fmtDate(s.date)}, ${mins} min in</div>
-  <div class="display-words">Your workout</div>
-  <p class="sub">${w.exercises.length ? `${w.exercises.length} exercise${w.exercises.length === 1 ? '' : 's'}, ${done} of ${total} sets logged.` : 'Add the first exercise.'}</p>
-  ${total ? `<div class="stack" aria-hidden="true">${Array.from({ length: total }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>` : ''}
-</header>
+${sessionBar(s, w, units, 'Your workout')}
 ${ui.picking ? picker(d) : ''}
-<ul class="rows">
-  ${w.exercises.map(e => exerciseRow(e, s.items[e.exerciseId], units, d)).join('')}
-  <li class="row"><button class="row-head" style="grid-template-columns:28px 1fr" data-action="pick_open"><span class="row-mark" style="border-style:dashed">+</span><span class="row-title">Add an exercise</span></button></li>
-  ${checkRow('protein', 'Protein after', ['Something with protein within an hour: a shake, eggs, curd, chicken.'], s)}
-</ul>
-<div class="actions" style="margin-top:28px">
+${w.exercises.map(e => exBlock(e, s.items[e.exerciseId], units, d, s)).join('')}
+<button class="st-add big" data-action="pick_open">+ Add exercise</button>
+<div class="log" style="margin-top:14px"><div class="logrow"><div class="logl"><b>Protein after</b><span>A shake, eggs, curd or chicken within an hour.</span></div><button class="st-ok" aria-pressed="${s.checklist.protein}" data-action="check" data-key="protein" aria-label="Protein done">✓</button></div></div>
+<div class="actions" style="margin-top:20px">
   <button class="btn primary block" data-action="finish">Finish workout</button>
   ${w.exercises.length ? `<button class="link" data-action="save_routine">Save these exercises as a routine</button>` : ''}
   <button class="link" data-action="discard">Discard this workout</button>
@@ -525,15 +520,6 @@ function pickList(d, q) {
   ${needle && !exact ? `<li class="row"><button class="row-head" style="grid-template-columns:1fr auto" data-action="pick_custom"><span class="row-title">Add "${esc(q.trim())}" as your own exercise</span><span class="row-meta">new</span></button></li>` : ''}</ul>`;
 }
 
-// One line of notes per exercise per session, with the last one shown back.
-function noteRow(e, it) {
-  const prev = store.lastNote(e.exerciseId);
-  return `<div class="noterow">
-    ${prev && !it.note ? `<p class="small muted" style="margin:8px 0 4px">Last note, ${fmtDate(prev.date, { day: 'numeric', month: 'short' })}: “${esc(prev.note)}”</p>` : ''}
-    <input class="input" type="text" maxlength="140" placeholder="Note for this exercise, e.g. felt heavy, left shoulder clicked" value="${esc(it.note || '')}" data-change="exnote" data-ex="${e.exerciseId}" aria-label="Note for ${esc(e.name)}">
-  </div>`;
-}
-
 // ── Rest timer (docked) ─────────────────────────────────────────
 
 function startTimer(seconds) {
@@ -550,7 +536,7 @@ function renderDock() {
   const pct = Math.max(0, Math.min(100, (1 - left / timer.total) * 100));
   const mm = Math.floor(Math.abs(left) / 60), ss = String(Math.abs(left) % 60).padStart(2, '0');
   dock.hidden = false;
-  dock.innerHTML = `<div class="timer ${over ? 'over' : ''}" role="timer" aria-live="off"><div><div class="small" style="opacity:.8">${over ? 'Rest over. Next set.' : 'Rest'}</div><div class="t">${over ? '+' : ''}${mm}:${ss}</div><div class="bar"><div style="clip-path:inset(0 ${over ? 0 : (100 - pct).toFixed(1)}% 0 0)"></div></div></div><div style="display:grid;gap:6px"><button data-action="add30">+30 s</button><button data-action="skip_timer">${over ? 'Close' : 'Skip'}</button></div></div>`;
+  dock.innerHTML = `<div class="timer ${over ? 'over' : ''}" role="timer" aria-live="off"><div class="timer-l"><span class="small">${over ? 'Rest over' : 'Rest'}</span><span class="t">${over ? '+' : ''}${mm}:${ss}</span></div><div class="bar"><div style="clip-path:inset(0 ${over ? 0 : (100 - pct).toFixed(1)}% 0 0)"></div></div><div class="timer-b"><button data-action="add30">+30 s</button><button data-action="skip_timer">${over ? 'Close' : 'Skip'}</button></div></div>`;
   dock.onclick = e => { const b = e.target.closest('[data-action]'); if (!b) return; if (b.dataset.action === 'add30') { timer.endAt += 30000; timer.total += 30; timer.fired = false; renderDock(); } else stopTimer(); };
 }
 function beep() {

@@ -358,9 +358,11 @@ function e1rmOf(w, r) { return r === 1 ? w : w * (1 + r / 30); }
 export function bestSet(item) {
   const done = (item.sets || []).filter(s => s.done && s.reps > 0);
   if (!done.length) return null;
-  const w = item.weightLb || 0;
-  const top = done.reduce((a, s) => (w ? e1rmOf(w, s.reps) > e1rmOf(w, a.reps) : s.reps > a.reps) ? s : a, done[0]);
-  return { weightLb: w, reps: top.reps, score: w ? e1rmOf(w, top.reps) : top.reps };
+  const wOf = s => s.w ?? item.weightLb ?? 0;
+  const loaded = done.some(s => wOf(s) > 0);
+  const score = s => loaded ? e1rmOf(wOf(s), s.reps) : s.reps;
+  const top = done.reduce((a, s) => score(s) > score(a) ? s : a, done[0]);
+  return { weightLb: loaded ? wOf(top) : 0, reps: top.reps, score: score(top) };
 }
 // Which exercises in `session` beat everything in `history` (older sessions).
 export function personalRecords(session, historyByExercise) {
@@ -375,5 +377,5 @@ export function personalRecords(session, historyByExercise) {
   return out;
 }
 export function sessionVolumeLb(session) {
-  return Object.values(session.items || {}).reduce((a, it) => a + (it.sets || []).filter(s => s.done && s.reps > 0).reduce((b, s) => b + (it.weightLb || 0) * s.reps, 0), 0);
+  return Object.values(session.items || {}).reduce((a, it) => a + (it.sets || []).filter(s => s.done && s.reps > 0).reduce((b, s) => b + (s.w ?? it.weightLb ?? 0) * s.reps, 0), 0);
 }

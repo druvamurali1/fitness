@@ -105,7 +105,7 @@ export function startFreeSession() {
   d.sessions.push(s); save(); return s;
 }
 export function addFreeExercise(sessionId, exerciseId, weightLb = null) {
-  update(d => { const s = d.sessions.find(x => x.id === sessionId); if (!s || s.items[exerciseId]) return; s.order.push(exerciseId); s.items[exerciseId] = { weightLb, sets: [{ reps: null, done: false }, { reps: null, done: false }, { reps: null, done: false }] }; });
+  update(d => { const s = d.sessions.find(x => x.id === sessionId); if (!s || s.items[exerciseId]) return; s.order.push(exerciseId); s.items[exerciseId] = { weightLb, sets: [0, 1, 2].map(() => ({ reps: null, done: false, w: weightLb })) }; });
 }
 export function saveRoutine(name, exerciseIds) { const id = uid(); update(d => { d.routines ||= []; d.routines.push({ id, name: name.trim().slice(0, 40), exercises: exerciseIds }); }); return id; }
 export function deleteRoutine(id) { update(d => { d.routines = (d.routines || []).filter(r => r.id !== id); }); }
@@ -135,7 +135,7 @@ export function swapExercise(sessionId, fromId, toId, weightLb, suggested = null
     const old = s.items[fromId]; const n = old ? old.sets.length : 3;
     const keep = old && old.sets.some(x => x.done);
     if (!keep) delete s.items[fromId];
-    s.items[toId] = { weightLb, suggested, sets: Array.from({ length: n }, () => ({ reps: null, done: false })), swappedFrom: fromId };
+    s.items[toId] = { weightLb, suggested, sets: Array.from({ length: n }, () => ({ reps: null, done: false, w: weightLb })), swappedFrom: fromId };
     if (s.order) s.order = s.order.map(k => k === fromId ? toId : k); });
 }
 export function finishSession(id, prs = []) { update(d => { const s = d.sessions.find(x => x.id === id); if (s) { s.completed = true; s.finishedAt = Date.now(); s.prs = prs; d.lastFinished = id; } }); }
