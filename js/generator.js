@@ -10,7 +10,7 @@ const LEVEL = { novice: 0, detrained: 1, experienced: 2 };
 
 // Bump when the plan's shape or the data behind it changes; stored plans are
 // rebuilt from the profile on load when the version differs.
-export const PLAN_VERSION = 3;
+export const PLAN_VERSION = 4;
 
 export function checkRedFlags(profile) {
   return RED_FLAGS.filter(f => f.test(profile)).map(f => f.text);
