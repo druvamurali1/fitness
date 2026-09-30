@@ -33,7 +33,7 @@ export function renderExercise(root, ctx, id) {
   <div class="pbar-top"><button class="pbar-back" data-action="back" aria-label="Back">${CHEV}</button><span class="pbar-title">${esc(ex.name)}</span><span></span></div>
   <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${ui.tab === k}" data-action="tab" data-tab="${k}">${l}</button>`).join('')}</div>
 </div>
-${ui.tab === 'summary' ? summaryTab(ex, id, inPlan, hist, loaded, units) : ui.tab === 'history' ? historyTab(ex, hist, loaded, units) : `
+${ui.tab === 'summary' ? (v ? video(v) : '') + summaryTab(ex, id, inPlan, hist, loaded, units) : ui.tab === 'history' ? historyTab(ex, hist, loaded, units) : `
 ${v ? video(v) : ''}
 <p class="lede" style="margin-top:14px">${esc(how.what)}</p>
 ${inPlan ? `<p class="small muted">In workout ${esc(inPlan.workout.id)}: ${esc(setsText(inPlan))}. ${esc(startText(inPlan, units))}</p>` : ''}
@@ -114,7 +114,7 @@ function summaryTab(ex, id, inPlan, hist, loaded, units) {
     [ex.loadType === 'time' ? 'Most seconds in a session' : 'Most reps in a session', `${bestOf('total').m.total}`, bestOf('total').date],
   ];
   return `
-<h2 class="ex-name" style="margin-top:4px">${esc(ex.name)}</h2>
+<h2 class="ex-name">${esc(ex.name)}</h2>
 <p class="small muted" style="margin:2px 0 0">Primary: ${esc(ex.muscles.primary.join(', '))}${ex.muscles.secondary.length ? `. Also: ${esc(ex.muscles.secondary.join(', '))}` : ''}</p>
 ${inPlan ? `<p class="small" style="margin:6px 0 0">In workout ${esc(inPlan.workout.id)}: ${esc(setsText(inPlan))}. ${esc(startText(inPlan, units))}</p>` : ''}
 ${hist.length ? `
