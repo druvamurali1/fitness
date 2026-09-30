@@ -64,6 +64,8 @@ test('days per week pick the split; beginners are capped at four', () => {
   // Cardio on a lifting day is allowed.
   const both = generatePlan({ ...druva, cardioDays: [1, 3] });
   assert.deepEqual(both.cardioDays, [1, 3]);
+  // The days picked are the count; a stale daysPerWeek is ignored.
+  assert.equal(generatePlan({ ...druva, daysPerWeek: 3, trainingDays: [1, 4] }).splitId, 'full_body_2');
 });
 
 test('red flags block', () => {

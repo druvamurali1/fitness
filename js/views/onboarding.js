@@ -103,6 +103,8 @@ function validate(stepDef, a) {
       if (f.type === 'days' && empty) return 'Pick at least one day.';
       if (f.type !== 'yesno' && f.type !== 'days' && empty) return `Fill in "${f.label}".`;
     }
+    if (f.type === 'days' && !empty && f.min && v.length < f.min) return v.length === 1 ? 'One lifting day a week will not get you anywhere. Pick at least two.' : `Pick at least ${f.min} days.`;
+    if (f.type === 'days' && !empty && f.max && v.length > f.max) return `${v.length} lifting days a week is not something this app will program. Rest days are where muscle grows. Pick ${f.max} at most.`;
     if (empty) continue;
     if ((f.type === 'text' || f.type === 'textarea') && String(v).trim().length === 0) return `"${f.label}" is only spaces.`;
     if ((f.type === 'text' || f.type === 'textarea') && f.maxLength && String(v).length > f.maxLength) return `"${f.label}" is too long. Keep it under ${f.maxLength} characters.`;
@@ -111,7 +113,6 @@ function validate(stepDef, a) {
     if (f.type === 'weight' && (v < f.min || v > f.max)) return a.units.body === 'lb' ? `"${f.label}" should be between ${Math.round(kgToLb(f.min))} and ${Math.round(kgToLb(f.max))} lb.` : `"${f.label}" should be between ${f.min} and ${f.max} kg.`;
     if (f.type === 'load') { const n = v[a.units.load]; const lo = a.units.load === 'kg' ? Math.round(lbToKg(f.min)) : f.min, hi = a.units.load === 'kg' ? Math.round(lbToKg(f.max)) : f.max; if (n != null && (n < lo || n > hi)) return `"${f.label}" should be between ${lo} and ${hi} ${a.units.load}.`; }
   }
-  if (stepDef.id === 'schedule' && a.trainingDays && a.trainingDays.length !== Number(a.daysPerWeek)) return `You chose ${a.daysPerWeek} lifting days but picked ${a.trainingDays.length}. Make them match.`;
   return null;
 }
 
@@ -119,6 +120,7 @@ function finish(answers, ctx) {
   const profile = { ...answers };
   delete profile._ft; delete profile._in; delete profile.heightUnit;
   if (typeof profile.name === 'string') profile.name = profile.name.trim().slice(0, 40);
+  if (Array.isArray(profile.trainingDays)) profile.daysPerWeek = profile.trainingDays.length;
   const plan = generatePlan(profile);
   if (plan.blocked) { state.screen = 'blocked'; state.a = answers; return; }
   store.update(d => { d.profile = profile; d.plan = plan; d.settings.units = profile.units || d.settings.units; });
@@ -222,7 +224,7 @@ function field(f, a) {
     case 'choice': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="choices" role="radiogroup">${f.options.map(([val, lab]) => `<button type="button" class="choice" role="radio" aria-checked="${String(v) === val}" data-action="choose" data-key="${f.key}" data-value="${val}"><span class="dot"></span><span>${esc(lab)}</span></button>`).join('')}</div></div>`;
     case 'multi': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="choices">${f.options.map(([val, lab]) => `<button type="button" class="choice sq" aria-pressed="${(v || []).includes(val)}" data-action="multi" data-key="${f.key}" data-value="${val}"><span class="dot"></span><span>${esc(lab)}</span></button>`).join('')}</div><p class="help">Leave all unticked if none apply.</p></div>`;
     case 'yesno': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="seg">${[['yes', 'Yes'], ['no', 'No']].map(([val, lab]) => `<button type="button" aria-pressed="${v === (val === 'yes')}" data-action="yesno" data-key="${f.key}" data-value="${val}">${lab}</button>`).join('')}</div></div>`;
-    case 'days': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="days">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" aria-pressed="${(v || []).includes(d)}" data-action="day" data-key="${f.key}" data-value="${d}">${DAY_SHORT[d]}</button>`).join('')}</div></div>`;
+    case 'days': return `<div class="field"><div class="lab">${esc(f.label)}${v && v.length ? ` <span class="muted" style="font-weight:400">${v.length} a week</span>` : ''}</div><div class="days">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" aria-pressed="${(v || []).includes(d)}" data-action="day" data-key="${f.key}" data-value="${d}">${DAY_SHORT[d]}</button>`).join('')}</div>${f.help ? `<p class="help">${esc(f.help)}</p>` : ''}</div>`;
     case 'height': return `<div class="field"><div class="lab">${esc(f.label)}</div><div class="inline-units">${a.heightUnit === 'ft'
       ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="input" type="number" inputmode="numeric" placeholder="ft" data-field="heightFt" value="${a._ft ?? (a.heightCm ? Math.floor(a.heightCm / 2.54 / 12) : '')}" aria-label="feet"><input class="input" type="number" inputmode="numeric" placeholder="in" data-field="heightIn" value="${a._in ?? (a.heightCm ? Math.round(a.heightCm / 2.54 % 12) : '')}" aria-label="inches"></div>`
       : `<input class="input" type="number" inputmode="numeric" placeholder="cm" data-field="heightCm" value="${a.heightCm ?? ''}" aria-label="centimetres">`}

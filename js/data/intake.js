@@ -45,10 +45,9 @@ export const INTAKE_STEPS = [
 
   { id: 'schedule', title: 'Schedule', intro: 'Pick the days you will actually show up, not the days you wish you would.',
     fields: [
-      { key: 'daysPerWeek', label: 'Lifting days per week', type: 'choice', required: true, options: [
-        ['2', 'Two, the least that still works'], ['3', 'Three, the best start for most people'], ['4', 'Four, upper and lower body on separate days'], ['5', 'Five, only if you already train'] ] },
-      { key: 'trainingDays', label: 'Which days?', type: 'days', required: true },
-      { key: 'cardioDays', label: 'Easy cardio days, if any. They can be lifting days too.', type: 'days', required: false },
+      { key: 'trainingDays', label: 'Lifting days', type: 'days', required: true, min: 2, max: 5,
+        help: 'Two is the least that still works. Three is the best start for most people. Four splits upper and lower body. Five is only for someone already training; a beginner who picks five gets four plus a cardio day.' },
+      { key: 'cardioDays', label: 'Easy cardio days, if any', type: 'days', required: false, help: 'Twenty easy minutes on the rower or bike, or a walk. These can be lifting days too.' },
       { key: 'timeOfDay', label: 'When?', type: 'choice', required: true, options: [['morning', 'Morning'], ['midday', 'Midday'], ['evening', 'Evening']] },
       { key: 'sessionMinutes', label: 'Minutes per session', type: 'choice', required: true, options: [['45', '45'], ['60', '60'], ['75', '75']] },
       { key: 'travel', label: 'Do you travel for work?', type: 'yesno', required: true },

@@ -68,6 +68,7 @@ function normalise(profile) {
   p.pain = p.pain || [];
   p.conditions = p.conditions || [];
   p.trainingDays = (p.trainingDays || [1, 3, 5]).map(Number).sort();
+  p.daysPerWeek = p.trainingDays.length; // the days chosen decide the split
   p.cardioDays = (p.cardioDays || []).map(Number).sort();
   p.units = p.units || { load: 'lb', body: 'kg' };
   p.experience = p.experience || 'novice';
