@@ -1,5 +1,5 @@
 // YouTube demonstration videos, one per exercise. Every id was checked against
-// YouTube's oEmbed endpoint on 2026-09-30. Do not add an id that has not been checked.
+// YouTube's oEmbed endpoint on 2026-09-30 (eight added later the same day). Do not add an id that has not been checked.
 
 export const VIDEOS = {
   back_squat: { id: "bs_Ej32IYgo", title: "Untamed Strength: \"How To\" SQUAT - High bar/Low bar", channel: "Alan Thrall (Untamed Strength)" },
@@ -39,4 +39,12 @@ export const VIDEOS = {
   seated_cable_row: { id: "UCXxvVItLoM", title: "Seated Cable Row", channel: "Renaissance Periodization" },
   split_squat: { id: "-4LVK1crLSw", title: "The ULTIMATE Bulgarian Split Squat Tutorial", channel: "Squat University" },
   triceps_pushdown: { id: "6Fzep104f0s", title: "Cable Triceps Pushdown", channel: "Renaissance Periodization" },
+  cable_curl: { id: "16aEi1a68E0", title: "How to Do the Cable Biceps Curl With Perfect Form | Form Check | Men\u2019s Health Muscle", channel: "Men\u2019s Health Muscle" },
+  backpack_curl: { id: "kd198JMLk8M", title: "No Gym? No Problem! Backpack Bicep Curls \ud83d\udcaa", channel: "Gregory Fitness" },
+  rear_delt_raise: { id: "73WpaOMnhSU", title: "Exercise Index - Bent Over Dumbbell Rear Delt Raise", channel: "mountaindog1" },
+  prone_y_raise: { id: "7nT74MBr2VM", title: "The Y Raise", channel: "Jim Stoppani, PhD" },
+  side_plank: { id: "7Zat7RFY52Y", title: "Simplified: Side Plank - Improve Form and Go From Beginner to Advanced", channel: "MuscleWiki" },
+  db_floor_press: { id: "fygbrKz7g9s", title: "The Correct Way To Do A DUMBBELL FLOOR PRESS.\u2705", channel: "mountaindog1" },
+  barbell_floor_press: { id: "vAFw7EPL4eM", title: "Floor Press Exercise Tutorial | Old School Chest Workout", channel: "Buff Dudes Workouts" },
+  weighted_push_up: { id: "cXiuwKfxMlI", title: "Weighted Push-Ups Change Everything", channel: "Daniel Vadnal" },
 };
