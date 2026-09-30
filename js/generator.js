@@ -22,8 +22,11 @@ export function generatePlan(profile, { today } = {}) {
 
   const p = normalise(profile);
   const hasLoad = ['barbell', 'dumbbells', 'machines', 'cables'].some(e => p.equipment.includes(e));
-  const templateId = !hasLoad ? 'bodyweight_2' : (p.daysPerWeek >= 4 ? 'upper_lower_4' : 'full_body_3');
+  const capped = p.daysPerWeek >= 5 && p.experience !== 'experienced';
+  const days = capped ? 4 : p.daysPerWeek;
+  const templateId = !hasLoad ? 'bodyweight_2' : days <= 2 ? 'full_body_2' : days === 3 ? 'full_body_3' : days === 4 ? 'upper_lower_4' : 'five_day';
   const template = TEMPLATES[templateId];
+  const extraCautions = capped ? ['You asked for five lifting days. Until you have six months of steady training behind you, five is more recovery debt than progress, so the program uses four. The fifth day is easy cardio.'] : [];
 
   const workouts = template.workouts.map(w => buildWorkout(w, p));
   const fallback = TEMPLATES.bodyweight_2.workouts.map(w => buildWorkout(w, { ...p, equipment: [] }));
@@ -32,12 +35,12 @@ export function generatePlan(profile, { today } = {}) {
     version: PLAN_VERSION,
     mode: 'plan',
     createdAt: today || new Date().toISOString().slice(0, 10),
-    targetPerWeek: p.trainingDays.length,
+    targetPerWeek: capped ? 4 : p.trainingDays.length,
     splitId: templateId,
     splitName: template.name,
     splitDescription: template.description,
-    trainingDays: p.trainingDays,
-    cardioDays: p.cardioDays,
+    trainingDays: capped ? p.trainingDays.slice(0, 4) : p.trainingDays,
+    cardioDays: capped ? [...new Set([...p.cardioDays, ...p.trainingDays.slice(4)])].sort() : p.cardioDays,
     workouts,
     fallback,
     fallbackName: TEMPLATES.bodyweight_2.name,
@@ -47,7 +50,7 @@ export function generatePlan(profile, { today } = {}) {
     cooldown: COOLDOWN,
     progression: progressionRules(p),
     diet: buildDiet(p),
-    cautions: CAUTIONS.filter(c => c.test(p)).map(c => c.text),
+    cautions: [...extraCautions, ...CAUTIONS.filter(c => c.test(p)).map(c => c.text)],
     notes: p.notes || [],
     equipmentNotes: p.equipmentNotes || {},
     units: p.units,

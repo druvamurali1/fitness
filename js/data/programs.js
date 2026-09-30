@@ -38,6 +38,30 @@ export const TEMPLATES = {
     ],
   },
 
+  full_body_2: {
+    name: 'Full body, two days',
+    description: 'Two sessions a week, every muscle both times. The least that still builds strength and muscle; good for a packed week.',
+    rotation: true,
+    workouts: [
+      { id: 'A', name: 'Squat day', focus: 'Legs, chest and back', slots: [
+        { pattern: 'squat', role: 'main', sets: 3 },
+        { pattern: 'horizontal_push', role: 'secondary', sets: 3 },
+        { pattern: 'horizontal_pull', role: 'secondary', sets: 3 },
+        { pattern: 'hinge_light', role: 'accessory', sets: 2 },
+        { pattern: 'elbow_flexion', role: 'accessory', sets: 2 },
+        { pattern: 'core_static', role: 'core', sets: 3 },
+      ]},
+      { id: 'B', name: 'Deadlift day', focus: 'Hips, shoulders and back', slots: [
+        { pattern: 'hinge', role: 'main', sets: 3 },
+        { pattern: 'vertical_push', role: 'secondary', sets: 3 },
+        { pattern: 'vertical_pull', role: 'secondary', sets: 3 },
+        { pattern: 'lunge', role: 'accessory', sets: 2 },
+        { pattern: 'elbow_extension', role: 'accessory', sets: 2 },
+        { pattern: 'core_dynamic', role: 'core', sets: 3 },
+      ]},
+    ],
+  },
+
   upper_lower_4: {
     name: 'Upper / lower, four days',
     description: 'Two upper-body and two lower-body sessions a week. More volume per muscle than three full-body days; needs four reliable mornings.',
@@ -67,6 +91,48 @@ export const TEMPLATES = {
         { pattern: 'grip', role: 'grip', sets: 3 },
       ]},
       { id: 'L2', name: 'Lower 2', focus: 'Hips, legs and trunk', slots: [
+        { pattern: 'hinge', role: 'main', sets: 3 },
+        { pattern: 'squat', role: 'secondary', sets: 3 },
+        { pattern: 'knee_extension', role: 'accessory', sets: 2 },
+        { pattern: 'knee_flexion', role: 'accessory', sets: 2 },
+        { pattern: 'core_dynamic', role: 'core', sets: 3 },
+      ]},
+    ],
+  },
+
+  five_day: {
+    name: 'Upper, lower, push, pull, legs',
+    description: 'Five sessions a week for someone already training. Two full upper and lower days, then push, pull and legs. Needs five reliable days and good sleep.',
+    rotation: true,
+    workouts: [
+      { id: 'U', name: 'Upper', focus: 'Chest, back and shoulders', slots: [
+        { pattern: 'horizontal_push', role: 'main', sets: 3 },
+        { pattern: 'horizontal_pull', role: 'secondary', sets: 3 },
+        { pattern: 'vertical_push', role: 'secondary', sets: 3 },
+        { pattern: 'vertical_pull', role: 'secondary', sets: 3 },
+        { pattern: 'rear_delt', role: 'accessory', sets: 2 },
+      ]},
+      { id: 'L', name: 'Lower', focus: 'Legs and trunk', slots: [
+        { pattern: 'squat', role: 'main', sets: 3 },
+        { pattern: 'hinge_light', role: 'secondary', sets: 3 },
+        { pattern: 'lunge', role: 'accessory', sets: 2 },
+        { pattern: 'knee_flexion', role: 'accessory', sets: 2 },
+        { pattern: 'core_static', role: 'core', sets: 3 },
+      ]},
+      { id: 'P', name: 'Push', focus: 'Chest, shoulders and triceps', slots: [
+        { pattern: 'vertical_push', role: 'main', sets: 3 },
+        { pattern: 'horizontal_push_incline', role: 'secondary', sets: 3 },
+        { pattern: 'horizontal_push', role: 'secondary', sets: 3 },
+        { pattern: 'elbow_extension', role: 'accessory', sets: 3 },
+      ]},
+      { id: 'Q', name: 'Pull', focus: 'Back, biceps and grip', slots: [
+        { pattern: 'vertical_pull_hard', role: 'main', sets: 3 },
+        { pattern: 'horizontal_pull', role: 'secondary', sets: 3 },
+        { pattern: 'rear_delt', role: 'accessory', sets: 2 },
+        { pattern: 'elbow_flexion', role: 'accessory', sets: 3 },
+        { pattern: 'grip', role: 'grip', sets: 3 },
+      ]},
+      { id: 'G', name: 'Legs', focus: 'Hips, legs and trunk', slots: [
         { pattern: 'hinge', role: 'main', sets: 3 },
         { pattern: 'squat', role: 'secondary', sets: 3 },
         { pattern: 'knee_extension', role: 'accessory', sets: 2 },

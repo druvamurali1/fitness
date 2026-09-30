@@ -50,8 +50,20 @@ test('novice with nothing gets a bodyweight program and no barbell', () => {
   assert.ok(db.workouts.every(w => w.exercises.length >= 4));
 });
 
-test('four days gives upper/lower', () => {
-  assert.equal(generatePlan({ ...druva, daysPerWeek: 4 }).splitId, 'upper_lower_4');
+test('days per week pick the split; beginners are capped at four', () => {
+  assert.equal(generatePlan({ ...druva, daysPerWeek: 2, trainingDays: [1, 4] }).splitId, 'full_body_2');
+  assert.equal(generatePlan({ ...druva, daysPerWeek: 4, trainingDays: [1, 2, 4, 5] }).splitId, 'upper_lower_4');
+  const five = generatePlan({ ...druva, daysPerWeek: 5, trainingDays: [1, 2, 3, 4, 5] });
+  assert.equal(five.splitId, 'upper_lower_4');
+  assert.deepEqual(five.trainingDays, [1, 2, 3, 4]);
+  assert.ok(five.cardioDays.includes(5));
+  assert.ok(five.cautions.some(c => /five lifting days/i.test(c)));
+  const pro = generatePlan({ ...druva, experience: 'experienced', daysPerWeek: 5, trainingDays: [1, 2, 3, 4, 5] });
+  assert.equal(pro.splitId, 'five_day');
+  assert.equal(pro.workouts.length, 5);
+  // Cardio on a lifting day is allowed.
+  const both = generatePlan({ ...druva, cardioDays: [1, 3] });
+  assert.deepEqual(both.cardioDays, [1, 3]);
 });
 
 test('red flags block', () => {

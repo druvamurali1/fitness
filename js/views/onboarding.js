@@ -95,7 +95,6 @@ function validate(stepDef, a) {
     if (f.type === 'number' && (v < f.min || v > f.max)) return `"${f.label}" should be between ${f.min} and ${f.max}.`;
   }
   if (stepDef.id === 'schedule' && a.trainingDays && a.trainingDays.length !== Number(a.daysPerWeek)) return `You chose ${a.daysPerWeek} lifting days but picked ${a.trainingDays.length}. Make them match.`;
-  if (stepDef.id === 'schedule' && a.trainingDays && a.cardioDays && a.cardioDays.some(d => a.trainingDays.includes(d))) return 'A day cannot be both a lifting day and a cardio day.';
   return null;
 }
 

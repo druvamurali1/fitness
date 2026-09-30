@@ -136,7 +136,7 @@ function idleView(d, units, today) {
 ${missedWeek(d, today)}
 ${learning && !doneToday ? `<div class="note"><p><b>Learning session.</b> Light weight, good form, read each exercise page before you try it. The numbers do not matter yet.</p></div>` : ''}
 <div class="actions" style="margin-top:8px">
-  ${isCardio && !doneToday ? cardioRow(plan, dayRec) : ''}
+  ${isCardio ? cardioRow(plan, dayRec, isLift) : ''}
   ${!isLift && !isCardio && !doneToday ? `<p class="muted">Rest day. Eat to target, walk if you like, sleep.</p>` : ''}
   <button class="link" data-action="start" data-src="fallback">No gym today? Do the no-equipment workout</button>
 </div>
@@ -146,8 +146,8 @@ ${preview(next, d, units)}`;
 
 function isLearning(d, w) { return d.sessions.filter(s => s.completed && s.workoutId === w.id && s.source === 'main').length < 2; }
 
-function cardioRow(plan, rec) {
-  return `<div class="band"><div class="row-head" style="padding:0"><span class="row-mark" style="${rec.cardio ? 'background:var(--accent);border-color:var(--accent)' : ''}">${rec.cardio ? '✓' : ''}</span><div><div class="row-title">${esc(plan.cardio.name)} day</div><div class="row-sub">${esc(plan.cardio.text)}</div></div><button class="btn small quiet" data-action="cardio_done">${rec.cardio ? 'Undo' : 'Done'}</button></div></div>`;
+function cardioRow(plan, rec, withLift) {
+  return `<div class="logrow"><div class="logl"><b>${esc(plan.cardio.name)}${withLift ? ', after lifting' : ''}</b><span>${withLift ? '10 to 20 easy minutes on the rower or bike once the sets are done. Optional.' : esc(plan.cardio.text)}</span></div><button class="pip big ${rec.cardio ? 'on' : ''}" aria-pressed="${!!rec.cardio}" data-action="cardio_done" aria-label="Cardio done">${rec.cardio ? '✓' : ''}</button></div>`;
 }
 
 function weighRow(rec, units, today) {

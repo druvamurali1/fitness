@@ -46,9 +46,9 @@ export const INTAKE_STEPS = [
   { id: 'schedule', title: 'Schedule', intro: 'Pick the days you will actually show up, not the days you wish you would.',
     fields: [
       { key: 'daysPerWeek', label: 'Lifting days per week', type: 'choice', required: true, options: [
-        ['3', 'Three (recommended for the first year)'], ['4', 'Four'] ] },
+        ['2', 'Two, the least that still works'], ['3', 'Three, the best start for most people'], ['4', 'Four, upper and lower body on separate days'], ['5', 'Five, only if you already train'] ] },
       { key: 'trainingDays', label: 'Which days?', type: 'days', required: true },
-      { key: 'cardioDays', label: 'Easy cardio days, if any', type: 'days', required: false },
+      { key: 'cardioDays', label: 'Easy cardio days, if any. They can be lifting days too.', type: 'days', required: false },
       { key: 'timeOfDay', label: 'When?', type: 'choice', required: true, options: [['morning', 'Morning'], ['midday', 'Midday'], ['evening', 'Evening']] },
       { key: 'sessionMinutes', label: 'Minutes per session', type: 'choice', required: true, options: [['45', '45'], ['60', '60'], ['75', '75']] },
       { key: 'travel', label: 'Do you travel for work?', type: 'yesno', required: true },
