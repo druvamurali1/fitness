@@ -561,3 +561,5 @@ td.num, th.num { text-align: right; }
 .small-seg { flex: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chart .area { fill: color-mix(in srgb, var(--pin) 12%, transparent); } }
 :root[data-theme="dark"] .chart .area { fill: color-mix(in srgb, var(--pin) 12%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chart .line { stroke: var(--pin); } :root:not([data-theme="light"]) .chart .pt { stroke: var(--pin); } :root:not([data-theme="light"]) .chart .pt.last { stroke: var(--bg); } :root:not([data-theme="light"]) .chart .active { stroke: var(--pin); } }
+:root[data-theme="dark"] .chart .line { stroke: var(--pin); } :root[data-theme="dark"] .chart .pt { stroke: var(--pin); } :root[data-theme="dark"] .chart .pt.last { stroke: var(--bg); } :root[data-theme="dark"] .chart .active { stroke: var(--pin); }
