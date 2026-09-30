@@ -93,7 +93,7 @@ export const EXERCISES = {
   push_up: {
     name: 'Push-up', pattern: 'horizontal_push', equipment: [], level: 0,
     avoidIf: ['wrist'], loadType: 'body', start: null, increment: null,
-    cues: ['Hands under shoulders, body in one line.', 'Chest to within a fist of the floor.', 'Elbows back at 45 degrees, not flared.'],
+    cues: ['Hands under shoulders, body in one line.', 'Chest to within a fist of the floor.', 'Elbows back at 45 degrees, not flared.', 'Too easy? Feet on a bench, three seconds down, or a backpack on your back.'],
   },
 
   // ── Vertical push ─────────────────────────────────────────────
@@ -198,6 +198,17 @@ export const EXERCISES = {
     start: { lb: 15, kg: 7.5 }, increment: { lb: 5, kg: 2.5 },
     cues: ['Elbows pinned to the sides.', 'Curl to the shoulder, lower for two seconds.', 'No swinging; if you swing, the weight is too heavy.'],
   },
+  cable_curl: {
+    name: 'Cable curl', pattern: 'elbow_flexion', equipment: ['cables'], level: 0,
+    avoidIf: ['elbow'], loadType: 'stack',
+    start: { lb: 20, kg: 9 }, increment: { lb: 5, kg: 2.5 },
+    cues: ['Low pulley, straight bar or rope.', 'Elbows pinned to the sides, curl to the shoulders.', 'Lower slowly; the cable keeps tension the whole way.'],
+  },
+  backpack_curl: {
+    name: 'Backpack curl', pattern: 'elbow_flexion', equipment: [], level: 0,
+    avoidIf: ['elbow'], loadType: 'body', start: null, increment: null,
+    cues: ['Hold a loaded backpack by the top handle with both hands.', 'Elbows at your sides, curl it to chest height.', 'Three seconds down. Add books to make it harder.'],
+  },
   triceps_pushdown: {
     name: 'Triceps rope pushdown', pattern: 'elbow_extension', equipment: ['cables'], level: 0,
     avoidIf: ['elbow'], loadType: 'stack',
@@ -218,11 +229,28 @@ export const EXERCISES = {
     cues: ['Rope at face height, thumbs pointing back.', 'Pull to the forehead, elbows high and wide.', 'Light weight, perfect reps. This protects the shoulders.'],
   },
 
+  rear_delt_raise: {
+    name: 'Bent-over rear delt raise', pattern: 'rear_delt', equipment: ['dumbbells'], level: 0,
+    avoidIf: ['lower_back'], loadType: 'dumbbell',
+    start: { lb: 8, kg: 4 }, increment: { lb: 2.5, kg: 1 },
+    cues: ['Light dumbbells. Hinge forward until the chest faces the floor.', 'Raise the arms out to the sides, thumbs slightly down.', 'Pause at the top. If you have to swing, go lighter.'],
+  },
+  prone_y_raise: {
+    name: 'Prone Y raise', pattern: 'rear_delt', equipment: [], level: 0,
+    avoidIf: [], loadType: 'body', start: null, increment: null,
+    cues: ['Lie face down, arms overhead in a Y, thumbs up.', 'Lift the arms off the floor by squeezing the shoulder blades down.', 'Hold two seconds. No weight needed; it is hard enough.'],
+  },
+
   // ── Core and grip ─────────────────────────────────────────────
   plank: {
     name: 'Plank', pattern: 'core_static', equipment: [], level: 0,
     avoidIf: [], loadType: 'time', start: null, increment: null,
     cues: ['Forearms down, body in one straight line.', 'Squeeze glutes, tuck the ribs.', 'Stop the set when the hips sag.'],
+  },
+  side_plank: {
+    name: 'Side plank', pattern: 'core_static', equipment: [], level: 0,
+    avoidIf: ['shoulder'], loadType: 'time', start: null, increment: null,
+    cues: ['On one forearm, elbow under the shoulder, feet stacked.', 'Lift the hips until the body is one straight line.', 'Hold, then switch sides. Log the shorter side.'],
   },
   hanging_knee_raise: {
     name: 'Hanging knee raise', pattern: 'core_dynamic', equipment: ['pullup_bar'], level: 0,
@@ -262,10 +290,10 @@ export const PATTERN_PREFERENCE = {
   lunge:            ['db_walking_lunge', 'split_squat'],
   knee_flexion:     ['leg_curl', 'dumbbell_rdl', 'glute_bridge'],
   knee_extension:   ['leg_extension', 'split_squat'],
-  elbow_flexion:    ['db_curl'],
+  elbow_flexion:    ['db_curl', 'cable_curl', 'backpack_curl'],
   elbow_extension:  ['triceps_pushdown', 'bench_dip'],
-  rear_delt:        ['face_pull'],
-  core_static:      ['plank'],
+  rear_delt:        ['face_pull', 'rear_delt_raise', 'prone_y_raise'],
+  core_static:      ['plank', 'side_plank'],
   core_dynamic:     ['hanging_knee_raise', 'dead_bug'],
   grip:             ['dead_hang', 'farmer_carry'],
 };

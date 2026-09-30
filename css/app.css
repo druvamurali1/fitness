@@ -426,3 +426,4 @@ td.num, th.num { text-align: right; }
 .howto > span:nth-child(2) { display: grid; gap: 1px; }
 .howto:active { background: var(--bg-band); }
 .hero.floor .topbar .back { background: none; border: 0; padding: 0; }
+.swap { margin: 6px 0 10px; }

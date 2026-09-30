@@ -3,7 +3,7 @@
 // one tap away. Also the morning weigh-in.
 
 import * as store from '../store.js';
-import { suggestNext } from '../generator.js';
+import { suggestNext, swapped } from '../generator.js';
 import { DAY_NAMES } from '../data/intake.js';
 import { HOWTO, setsText } from '../data/howto.js';
 import { EXERCISES } from '../data/exercises.js';
@@ -30,6 +30,10 @@ export function renderToday(root, ctx) {
     pick_close: () => { ui.picking = false; renderToday(root, ctx); },
     pick: el => { const id = el.dataset.id; const h = store.exerciseHistory(id); const last = h.length ? h[h.length - 1] : null; store.addFreeExercise(session.id, id, last ? last.weightLb : (EXERCISES[id]?.start?.lb ?? null)); ui.picking = false; ui.expanded.add('ex:' + id); },
     pick_custom: () => { const name = (ui.q || '').trim().slice(0, 40); if (!name) return; const id = store.addCustomExercise(name); store.addFreeExercise(session.id, id, null); ui.picking = false; ui.expanded.add('ex:' + id); },
+    swap_open: el => { ui.swapping = el.dataset.ex; renderToday(root, ctx); },
+    swap_close: () => { ui.swapping = null; renderToday(root, ctx); },
+    swap: el => { const { from, to } = el.dataset; const planEx = findPlanEx(plan, session, from); const alt = swapped(planEx, to); const h = store.exerciseHistory(to); const sug = suggestNext(alt, h);
+      store.swapExercise(session.id, from, to, sug.loadLb); ui.swapping = null; if (ui.step === from) ui.step = to; ui.expanded.delete('ex:' + from); ui.expanded.add('ex:' + to); },
     add_set: el => { const ex = el.dataset.ex; store.update(x => { x.sessions.find(s => s.id === session.id).items[ex].sets.push({ reps: null, done: false }); }); },
     remove_ex: el => { const ex = el.dataset.ex; store.update(x => { const s = x.sessions.find(s => s.id === session.id); delete s.items[ex]; s.order = s.order.filter(k => k !== ex); }); },
     got_it: () => { ui2.introStep = 0; ui2.introAll = false; store.update(x => { x.settings.sawIntro = true; }); },
@@ -216,7 +220,11 @@ function prefill(s, w, d) {
 }
 function currentWorkout(plan, s) {
   if (s.source === 'free') return { id: 'free', name: 'Your workout', focus: 'Your workout', exercises: (s.order || []).map(id => freePlanEx(id, s)) };
-  return (s.source === 'fallback' ? plan.fallback : plan.workouts).find(w => w.id === s.workoutId);
+  const w = (s.source === 'fallback' ? plan.fallback : plan.workouts).find(w => w.id === s.workoutId);
+  if (!s.swaps || !Object.keys(s.swaps).length) return w;
+  // Follow swap chains (A swapped to B, B swapped to C) to the exercise actually in play.
+  const resolve = e => { let cur = e; const seen = new Set(); while (s.swaps[cur.exerciseId] && !seen.has(cur.exerciseId)) { seen.add(cur.exerciseId); cur = swapped(cur, s.swaps[cur.exerciseId]); } return cur; };
+  return { ...w, exercises: w.exercises.map(resolve) };
 }
 function findPlanEx(plan, s, exId) { return currentWorkout(plan, s).exercises.find(e => e.exerciseId === exId); }
 // In self-driven mode an exercise has no target range; sets grow as you add them.
@@ -293,6 +301,7 @@ function guided(d, s, w, units) {
       <div><b class="txt">${e.startLoadLb != null ? esc(loadShort(it.weightLb ?? e.startLoadLb, units, e.loadType).replace(/^pin /, '').replace(/ each$/, '')) : 'body'}</b><span>${e.startLoadLb != null ? (e.loadType === 'dumbbell' ? 'each hand' : e.loadType === 'stack' ? 'on the pin' : 'on the bar') : 'weight'}</span></div>
       <div><b>${e.restSeconds >= 60 ? fmtNum(e.restSeconds / 60, 1) : e.restSeconds}<span class="of">${e.restSeconds >= 60 ? 'min' : 's'}</span></b><span>rest</span></div>
     </div>
+    ${swapBlock(e, s)}
     <a class="howto" href="#exercise/${cur}">${v ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy">` : '<span class="howto-ph"></span>'}<span><b>How to do it</b><span class="small muted">${where ? esc(where.split('. ')[0].replace(/\.$/, '')) + '.' : 'Video, setup, steps, mistakes.'}</span></span><span class="chev" aria-hidden="true">▸</span></a>
     ${setGrid(e, it, units, d)}
   </section>${nav}`;
@@ -325,7 +334,7 @@ function exerciseRow(e, it, units, d) {
     <span><span class="row-title">${esc(e.name)}</span><span class="chev" aria-hidden="true">▸</span><br><span class="row-sub">${esc(setsText(e))}</span></span>
     <span class="row-meta">${shownLoad != null ? `${fmtNum(shownLoad, 1)} ${units.load}` : ''}</span>
   </button>
-  <div class="row-body"><a class="link" href="#exercise/${e.exerciseId}">How to do it</a>${setGrid(e, it, units, d)}</div></li>`;
+  <div class="row-body"><a class="link" href="#exercise/${e.exerciseId}">How to do it</a>${swapBlock(e, null)}${setGrid(e, it, units, d)}</div></li>`;
 }
 
 function setGrid(e, it, units, d) {
@@ -350,6 +359,18 @@ function setGrid(e, it, units, d) {
     </div>
     ${e.free ? `<div class="actions inline" style="margin:10px 0 0"><button class="btn quiet small" data-action="add_set" data-ex="${e.exerciseId}">Add a set</button><button class="link" data-action="remove_ex" data-ex="${e.exerciseId}">Remove exercise</button></div>` : ''}
     <p class="small muted" style="margin-top:10px">Tap the pin when the set is done. The rest timer starts by itself.</p>`;
+}
+
+// "Busy or missing? Swap." Shows the fallbacks for this slot; one tap replaces
+// the exercise for this session only.
+function swapBlock(e, s) {
+  if (!e.alts || !e.alts.length) return '';
+  const open = ui.swapping === e.exerciseId;
+  return `<div class="swap">
+    ${e.swappedFrom ? `<p class="small muted" style="margin:0 0 6px">Swapped in for ${esc(EXERCISES[e.swappedFrom]?.name || e.swappedFrom)} this session. Weights do not carry over; start where the app suggests.</p>` : ''}
+    <button class="link" data-action="${open ? 'swap_close' : 'swap_open'}" data-ex="${e.exerciseId}">${open ? 'Keep ' + esc(e.name) : 'Busy or missing? Swap it'}</button>
+    ${open ? `<ul class="rows tight" style="margin-top:6px">${e.alts.map((a, i) => `<li class="row"><button class="row-head" style="grid-template-columns:34px 1fr auto" data-action="swap" data-from="${e.exerciseId}" data-to="${a.id}"><span class="tag">${i + 1}</span><span class="row-title">${esc(a.name)}</span><span class="row-meta">${i === e.alts.length - 1 && EXERCISES[a.id]?.equipment.length === 0 ? 'no equipment' : 'same movement'}</span></button></li>`).join('')}</ul>` : ''}
+  </div>`;
 }
 
 // ── Self-driven mode ────────────────────────────────────────────

@@ -108,3 +108,19 @@ test('absurd body numbers are clamped before the calorie maths', () => {
   const u = energyTargets({ ...druva, weightKg: 'shdvcoih', heightCm: NaN });
   assert.ok(u.proteinG >= 100 && u.proteinG <= 160, `protein ${u.proteinG}`);
 });
+
+test('every plan exercise has same-movement fallbacks ending in bodyweight', async () => {
+  const { swapped } = await import('../js/generator.js');
+  const plan = generatePlan(druva);
+  const press = plan.workouts[0].exercises.find(e => e.exerciseId === 'db_bench_press');
+  assert.deepEqual(press.alts.map(a => a.id), ['machine_chest_press', 'incline_db_press', 'push_up']);
+  const squat = plan.workouts[0].exercises[0];
+  assert.deepEqual(squat.alts.map(a => a.id), ['goblet_squat', 'bodyweight_squat']);
+  for (const w of plan.workouts) for (const e of w.exercises) assert.ok(e.alts.length >= 1, `${e.exerciseId} has no fallback`);
+  // A swap keeps the slot's sets and rest but takes the fallback's tool and start weight.
+  const sw = swapped(press, 'push_up');
+  assert.equal(sw.sets, press.sets); assert.equal(sw.loadType, 'body'); assert.equal(sw.startLoadLb, null); assert.equal(sw.swappedFrom, 'db_bench_press');
+  // Knee pain: the squat slot's fallbacks never include a squat.
+  const knee = generatePlan({ ...druva, pain: ['knee'] });
+  for (const w of knee.workouts) for (const e of w.exercises) for (const a of e.alts) assert.ok(!['back_squat', 'goblet_squat', 'leg_press', 'leg_extension', 'db_walking_lunge', 'split_squat'].includes(a.id), a.id);
+});

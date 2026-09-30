@@ -43,6 +43,10 @@ ${editing ? `<div class="field" style="margin-top:6px"><label for="wherenote">De
 <div class="actions inline" style="margin-top:0"><button class="btn small" data-action="save_where">Save</button><label class="btn quiet small" style="cursor:pointer">${photo ? 'Replace photo' : 'Add a photo'}<input type="file" accept="image/*" capture="environment" hidden data-change="gymphoto"></label>${photo ? `<button class="link" data-action="del_photo">Remove photo</button>` : ''}<button class="link" data-action="cancel_where">Cancel</button></div>`
 : `<p>${esc(where || equipmentFallback(key))}</p><button class="link" data-action="edit_where">${where && d.profile?.equipmentNotes?.[key] ? 'Edit this note or photo' : 'Add a note or a photo of where it is'}</button>`}
 
+${inPlan && inPlan.alts && inPlan.alts.length ? `<h2 class="h3">If it's taken, or your gym doesn't have it</h2>
+<p class="small muted" style="margin-top:-2px">Same movement, different tool, in the order to try them. Weights do not carry over: start at the fallback's own suggested weight. During a session, "Busy or missing? Swap it" does this in one tap.</p>
+<ul class="rows tight">${inPlan.alts.map((a, i) => `<li class="row"><a class="row-head link-row" style="grid-template-columns:34px 1fr auto" href="#exercise/${a.id}"><span class="tag">${i + 1}</span><span class="row-title">${esc(a.name)}</span><span class="row-meta chev" aria-hidden="true">▸</span></a></li>`).join('')}</ul>` : ''}
+
 <h2 class="h3">Set it up</h2>
 <ol class="steps-list">${how.setup.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
 

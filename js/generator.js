@@ -102,7 +102,7 @@ function buildWorkout(w, p) {
       incrementLb: ex.increment ? ex.increment.lb : null,
       restSeconds: REST_SECONDS[slot.role] || 60,
       cues: ex.cues,
-      altId: ex.alt && ex.alt !== id && isAllowed(ex.alt, p) ? ex.alt : null,
+      alts: alternatives(id, slot.pattern, p, used),
     });
   });
   return { id: w.id, name: w.name, focus: w.focus || w.name, exercises };
@@ -116,6 +116,29 @@ function pickExercise(pattern, p, used) {
   }
   // Last resort: any bodyweight exercise of this pattern, even if already used.
   return prefs.find(id => EXERCISES[id].equipment.length === 0 && isAllowed(id, p)) || null;
+}
+
+// Up to three fallbacks for an exercise: same movement pattern, different
+// tool, in the order a trainer would reach for them. Always ends with the
+// bodyweight version if there is one, so there is something to do when
+// everything is taken.
+export function alternatives(id, pattern, p, used = new Set()) {
+  const prefs = PATTERN_PREFERENCE[pattern] || [];
+  const same = Object.keys(EXERCISES).filter(k => EXERCISES[k].pattern === EXERCISES[id]?.pattern && !prefs.includes(k));
+  const pool = [...prefs, ...same].filter(k => k !== id && !used.has(k) && isAllowed(k, p));
+  const body = pool.find(k => EXERCISES[k].equipment.length === 0);
+  const picked = pool.filter(k => k !== body).slice(0, body ? 2 : 3);
+  if (body) picked.push(body);
+  return picked.map(k => ({ id: k, name: EXERCISES[k].name }));
+}
+
+// Build the plan entry for a swapped-in exercise: the original slot's sets,
+// reps and rest, the fallback's own tool, cues and starting weight.
+export function swapped(planEx, altId) {
+  const ex = EXERCISES[altId];
+  const measure = (ex.loadType === 'time' || ex.pattern === 'grip') ? 'seconds' : 'reps';
+  const range = ex.target || (measure === 'seconds' ? BODY_TARGETS.time[planEx.role] : ex.loadType === 'body' ? BODY_TARGETS.body[planEx.role] : [planEx.repMin, planEx.repMax]);
+  return { ...planEx, exerciseId: altId, name: ex.name, measure, loadType: ex.loadType, startLoadLb: ex.start ? ex.start.lb : null, incrementLb: ex.increment ? ex.increment.lb : null, cues: ex.cues, repMin: range[0], repMax: range[1], swappedFrom: planEx.swappedFrom || planEx.exerciseId, alts: (planEx.alts || []).filter(a => a.id !== altId) };
 }
 
 export function isAllowed(id, p) {
