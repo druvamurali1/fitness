@@ -37,3 +37,12 @@ export function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
 }
+
+// The slim sticky bar every tab opens with: title, an optional control on the
+// right, and up to three numbers underneath.
+export function pageBar(title, stats = [], right = '') {
+  return `<div class="sbar">
+  <div class="sbar-top"><span class="sbar-title">${title}</span>${right}</div>
+  ${stats.length ? `<div class="sbar-stats">${stats.map(([label, value]) => `<div><span>${label}</span><b>${value}</b></div>`).join('')}</div>` : ''}
+</div>`;
+}

@@ -146,7 +146,9 @@ export function abandonSession(id) { update(d => { const i = d.sessions.findInde
 
 // History of one exercise across completed sessions, oldest first.
 export function exerciseHistory(exerciseId, { includeDeload = false } = {}) {
-  return load().sessions.filter(s => s.completed && s.items[exerciseId] && (includeDeload || !s.deload)).map(s => ({ date: s.date, sessionId: s.id, ...s.items[exerciseId] }));
+  return load().sessions.filter(s => s.completed && s.items[exerciseId] && (includeDeload || !s.deload))
+    .map((s, i) => ({ date: s.date, sessionId: s.id, _i: i, ...s.items[exerciseId] }))
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a._i - b._i);
 }
 export function deloadActive(today) { const d = load(); return !!(d.deload && today >= d.deload.from && today <= d.deload.until); }
 

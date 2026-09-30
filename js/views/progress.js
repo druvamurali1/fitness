@@ -4,7 +4,7 @@
 import * as store from '../store.js';
 import { lineChart } from '../charts.js';
 import { isoDate, weekStart, addDays, mean, fmtShort, fmtNum, displayLoad, kgToLb, e1rm } from '../util.js';
-import { esc, delegate, bodyText, loadText } from './ui.js';
+import { esc, delegate, bodyText, loadText, pageBar } from './ui.js';
 import { EXERCISES } from '../data/exercises.js';
 import { bestSet } from '../generator.js';
 
@@ -19,7 +19,7 @@ export function renderProgress(root, ctx) {
     d.sessions.filter(s => s.completed).forEach(s => Object.keys(s.items).forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
     lifts = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).map(id => { const ex = EXERCISES[id]; return { exerciseId: id, name: ex?.name || d.customExercises?.[id]?.name || id, role: 'main', loadType: ex?.loadType || 'free', startLoadLb: ex ? (ex.start ? ex.start.lb : null) : 1, measure: ex && (ex.loadType === 'time' || ex.pattern === 'grip') ? 'seconds' : 'reps' }; });
   }
-  if (!lifts.length) { root.innerHTML = `<div class="kicker">Progress</div><h1 class="title">Where you were, where you are.</h1><p class="empty" style="margin-top:20px">Finish a workout and your lifts show up here. Bodyweight and photos too.</p>${photoBlock(d)}<div class="actions inline"><label class="btn quiet" style="cursor:pointer">Add photo<input type="file" accept="image/*" capture="environment" hidden data-change="photo"></label></div>`; bindPhoto(root); return; }
+  if (!lifts.length) { root.innerHTML = `${pageBar('Progress')}<p class="empty" style="margin-top:20px">Finish a workout and your lifts show up here. Bodyweight and photos too.</p>${photoBlock(d)}<div class="actions inline"><label class="btn quiet" style="cursor:pointer">Add photo<input type="file" accept="image/*" capture="environment" hidden data-change="photo"></label></div>`; bindPhoto(root); return; }
   if (!ui.lift || !lifts.find(l => l.exerciseId === ui.lift)) ui.lift = lifts[0].exerciseId;
   const lift = lifts.find(l => l.exerciseId === ui.lift);
   const hist = store.exerciseHistory(lift.exerciseId).map(h => topSet(h, lift)).filter(Boolean);
@@ -41,16 +41,10 @@ export function renderProgress(root, ctx) {
   const firstH = hist[0], lastH = hist[hist.length - 1];
   const liftChange = loaded && hist.length > 1 ? displayLoad(lastH.weightLb, units.load, lift.loadType) - displayLoad(firstH.weightLb, units.load, lift.loadType) : null;
   root.innerHTML = `
-<header class="hero floor">
-  <div class="hero-date">Progress</div>
-  <div class="stats on-floor">
-    <div><b>${nowAvg ? fmtNum(nowAvg.avg, 1) : '–'}</b><span>${units.body} this week${change != null ? `, ${change >= 0 ? '+' : ''}${fmtNum(change, 1)} since ${fmtShort(firstAvg.start)}` : ''}</span></div>
-    <div><b>${lastWaist ? fmtNum(lastWaist.y, 1) : '–'}</b><span>waist ${units.body === 'lb' ? 'in' : 'cm'}</span></div>
-    <div><b>${totalSessions}</b><span>workouts logged</span></div>
-  </div>
-</header>
+${pageBar('Progress', [['Weight this week', nowAvg ? `${fmtNum(nowAvg.avg, 1)} ${units.body}` : '–'], ['Waist', lastWaist ? `${fmtNum(lastWaist.y, 1)} ${units.body === 'lb' ? 'in' : 'cm'}` : '–'], ['Workouts', String(totalSessions)]])}
+${change != null ? `<p class="small muted" style="margin:0 0 4px">${change >= 0 ? 'Up' : 'Down'} ${fmtNum(Math.abs(change), 1)} ${units.body} since the week of ${fmtShort(firstAvg.start)}.</p>` : ''}
 
-<h2 class="h2" style="margin-top:8px">Lifts</h2>
+<h2 class="h2" style="margin-top:14px">Lifts</h2>
 <div class="field" style="margin-top:0"><label for="liftsel" class="sr">Exercise</label><select id="liftsel" class="input" data-change="lift">${lifts.map(l => `<option value="${l.exerciseId}" ${l.exerciseId === ui.lift ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
 ${hist.length ? `<div class="stats">
   <div><b>${loaded ? esc(loadText(lastH.weightLb, units, lift.loadType).replace(/ (lb|kg)$/, '')) : lastH.reps}<span class="of">${loaded ? units.load : (lift.measure === 'seconds' ? 's' : 'reps')}</span></b><span>last time, × ${lastH.reps}${liftChange != null && liftChange !== 0 ? `, ${liftChange > 0 ? '+' : ''}${fmtNum(liftChange, 1)} since ${fmtShort(firstH.date)}` : ''}</span></div>

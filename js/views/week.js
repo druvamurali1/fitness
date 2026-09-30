@@ -3,7 +3,7 @@
 import * as store from '../store.js';
 import { DAY_NAMES } from '../data/intake.js';
 import { isoDate, weekStart, addDays, dayOfWeek, fmtShort, mean, fmtNum } from '../util.js';
-import { esc, delegate, bodyText, bodyFromInput, bodyToInput } from './ui.js';
+import { esc, delegate, bodyText, bodyFromInput, bodyToInput, pageBar } from './ui.js';
 
 const ui = { weekOffset: 0, selected: null };
 const DAY_LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -26,13 +26,13 @@ export function renderWeek(root, ctx) {
   const isCurrent = ui.weekOffset === 0;
 
   root.innerHTML = `
-<header class="hero floor wk">
-  <div class="topbar on-floor"><span class="hero-date">${isCurrent ? 'This week' : 'Week of ' + fmtShort(start)}</span>
-    <span class="wk-nav"><button class="back" data-action="prev" aria-label="Previous week">‹ Earlier</button>${isCurrent ? '' : `<button class="back" data-action="next" aria-label="Next week">Later ›</button>`}</span></div>
-  <div class="wk-big"><span class="display">${sessions.length}</span><span class="wk-of">of ${planned}<br>sessions</span></div>
+${pageBar(isCurrent ? 'This week' : 'Week of ' + fmtShort(start),
+  [['Workouts', `${sessions.length} of ${planned}`], ['Protein days', `${proteinDays} of 7`], ['Avg weight', weights.length ? bodyText(mean(weights), units) : '–']],
+  `<span class="wk-nav"><button class="pbar-back" data-action="prev" aria-label="Previous week"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="pbar-back" data-action="next" aria-label="Next week" ${isCurrent ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span>`)}
+<div class="wk-light">
   <div class="wk-strip" role="tablist" aria-label="Days of the week">${days.map(x => column(x, d, plan, today, sel)).join('')}</div>
   <div class="wk-key"><i class="k tall"></i>workout <i class="k"></i>protein <i class="k"></i>water</div>
-</header>
+</div>
 
 <h2 class="day-title">${DAY_NAMES[dow]}${sel === today ? ', today' : ', ' + fmtShort(sel)}</h2>
 <p class="day-status">${dayStatus(sel, d, plan, today)}</p>
@@ -49,12 +49,6 @@ ${future ? '' : `
   <div class="logrow col"><div class="logl"><b>Note</b></div><input class="input" type="text" value="${esc(rec.note || '')}" placeholder="Anything worth remembering" maxlength="200" data-change="note" aria-label="Note for the day"></div>
 </div>`}
 
-<h2 class="h2">This week</h2>
-<div class="stats">
-  <div><b>${sessions.length}<span class="of">/${planned}</span></b><span>workouts</span></div>
-  <div><b>${proteinDays}<span class="of">/7</span></b><span>protein days</span></div>
-  <div><b>${weights.length ? bodyText(mean(weights), units).replace(/ (kg|lb)$/, '') : '–'}</b><span>avg ${units.body}${weights.length ? `, ${weights.length} mornings` : ''}</span></div>
-</div>
 ${allTime(d, plan, today)}`;
 
   delegate(root, {

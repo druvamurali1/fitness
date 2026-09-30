@@ -2,7 +2,7 @@
 
 import * as store from '../store.js';
 import { DAY_NAMES } from '../data/intake.js';
-import { esc, delegate, loadText, bodyText, applyTheme } from './ui.js';
+import { esc, delegate, loadText, bodyText, applyTheme, pageBar } from './ui.js';
 import { fmtNum } from '../util.js';
 import { setsText } from '../data/howto.js';
 import { EXERCISES, PATTERN_PREFERENCE } from '../data/exercises.js';
@@ -17,15 +17,8 @@ export function renderPlan(root, ctx) {
   if (plan.mode === 'free') { renderFree(root, ctx); return; }
   const days = plan.trainingDays.map(x => DAY_NAMES[x]);
   root.innerHTML = `
-<header class="hero floor">
-  <div class="hero-date">${p?.name ? esc(p.name) + "'s plan" : 'Your plan'}</div>
-  <div class="display-words">${esc(plan.splitName)}</div>
-  <div class="stats on-floor">
-    <div><b>${plan.trainingDays.length}</b><span>${days.map(x => x.slice(0, 3)).join(', ')}</span></div>
-    <div><b>${fmtNum(diet.calories)}</b><span>kcal a day</span></div>
-    <div><b>${diet.proteinG}<span class="of">g</span></b><span>protein a day</span></div>
-  </div>
-</header>
+${pageBar(p?.name ? esc(p.name) + "'s plan" : 'Your plan', [['Lifting days', days.map(x => x.slice(0, 3)).join(', ')], ['Calories', `${fmtNum(diet.calories)} kcal`], ['Protein', `${diet.proteinG} g`]])}
+<p style="margin:0 0 10px"><b>${esc(plan.splitName)}.</b></p>
 <nav class="chips" aria-label="Sections"><a href="#plan/workouts">Workouts</a><a href="#plan/food">Food</a><a href="#plan/rules">Rules</a><a href="#plan/settings">Settings</a></nav>
 
 <p>${esc(plan.splitDescription)} Workouts take turns in order (${plan.workouts.map(w => w.id).join(', ')}), whatever day you show up.${plan.cardioDays.length ? ` Easy cardio on ${plan.cardioDays.map(x => DAY_NAMES[x]).join(' and ')}.` : ''}</p>
@@ -125,15 +118,7 @@ function renderFree(root, ctx) {
   Object.entries(EXERCISES).filter(([, e]) => !libUi.mine || e.equipment.every(k => have.has(k))).filter(([, e]) => !libUi.group || muscleGroup(e).includes(libUi.group)).forEach(([id, e]) => { (groups[e.pattern] ||= []).push({ id, name: e.name, sub: (e.muscles?.primary || []).join(', ') }); });
   const customs = Object.entries(d.customExercises || {});
   root.innerHTML = `
-<header class="hero floor">
-  <div class="hero-date">${p?.name ? esc(p.name) + "'s routine" : 'Your routine'}</div>
-  <div class="display-words">Your own routine</div>
-  <div class="stats on-floor">
-    <div><b>${plan.targetPerWeek}</b><span>workouts a week</span></div>
-    <div><b>${diet.proteinG}<span class="of">g</span></b><span>protein a day</span></div>
-    <div><b>${Object.keys(d.customExercises || {}).length + Object.keys(EXERCISES).length}</b><span>exercises to pick from</span></div>
-  </div>
-</header>
+${pageBar(p?.name ? esc(p.name) + "'s routine" : 'Your routine', [['Workouts a week', String(plan.targetPerWeek)], ['Protein', `${diet.proteinG} g`], ['Exercises', String(Object.keys(d.customExercises || {}).length + Object.keys(EXERCISES).length)]])}
 <p>No program here. You log what you do; these are the targets the Week tab counts against.</p>
 
 <h2 class="h2">Targets</h2>
