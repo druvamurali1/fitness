@@ -1,5 +1,5 @@
 // Offline cache. Bump CACHE when files change so phones pick up the new build.
-const CACHE = 'gym-plan-v5';
+const CACHE = 'gym-plan-v6';
 const FILES = ['./', './index.html', './css/app.css', './manifest.webmanifest', './assets/icon.svg',
   './js/app.js', './js/util.js', './js/store.js', './js/generator.js', './js/charts.js',
   './js/data/exercises.js', './js/data/programs.js', './js/data/diets.js', './js/data/intake.js', './js/data/profiles.js', './js/data/howto.js', './js/data/videos.js',

@@ -12,7 +12,12 @@ const state = { screen: 'welcome', step: 0, a: { units: { load: 'lb', body: 'kg'
 export function renderOnboarding(root, ctx) {
   const s = state;
   const m = /^#setup\/([a-z0-9_-]+)$/i.exec(location.hash || '');
-  if (m && PROFILES[m[1]]) { location.hash = '#today'; finish({ ...PROFILES[m[1]], presetId: m[1] }, ctx); return; }
+  if (m && PROFILES[m[1]]) {
+    // Already on this phone: continue as them rather than making a twin.
+    const have = store.people().find(pp => pp.name === PROFILES[m[1]].name);
+    location.hash = '#today';
+    if (have) { store.switchPerson(have.id); ctx.done(); } else finish({ ...PROFILES[m[1]], presetId: m[1] }, ctx);
+    return; }
   if (s.screen === 'welcome') root.innerHTML = welcome();
   else if (s.screen === 'free') root.innerHTML = freeSetup();
   else if (s.screen === 'blocked') root.innerHTML = blocked();
