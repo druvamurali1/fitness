@@ -29,4 +29,4 @@ npm test
 - `js/generator.js`: intake answers in, plan out. Pure functions.
 - `js/store.js`: one JSON document in localStorage.
 - `js/views/`: onboarding, Today, Week, Progress, Plan.
-- `docs/`: the interview, the equipment inventory, the decisions, and the readable program and diet.
+- `docs/`: the interview, the equipment inventory, the decisions, and the readable program and diet (local only; regenerate the last two with `node scripts/write-docs.js`).

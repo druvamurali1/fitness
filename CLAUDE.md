@@ -6,7 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal-trainer web app for Druva (the owner, a complete beginner to training). Claude acts as the trainer: it designed the intake interview, will design the program and diet from the answers, and builds the app that delivers and tracks them. The app must also onboard any other beginner from scratch through an in-app intake, but Druva's profile is the first and best-tested path.
 
-Status (2026-09-30): v0.1 built and walked through in the browser. Druva's intake answers are recorded in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md`. Equipment photos are in the folder root (`IMG_4262.HEIC` to `IMG_4271.HEIC`) but git-ignored. Everything below is decided and should not be re-litigated without the owner asking.
+Status (end of 2026-09-30): live at https://druvamurali1.github.io/fitness/ and in daily use from 2026-10-02 (Druva's first real session is Friday 2 Oct, Workout A). Everything below is decided and should not be re-litigated without the owner asking. Druva's interview answers are in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md` (regenerate with `node scripts/write-docs.js`). Equipment photos are in the folder root, git-ignored.
+
+## Where we left off (read this first tomorrow)
+
+Built and live today, in order: interview and generator; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; labelled Done buttons.
+
+Open items, none started:
+- Druva has not yet trained with the app. First real feedback comes after Friday 2 Oct. Expect wording and layout notes from the gym floor.
+- Staged diet (trainer's recommendation, not in the app): weeks 1 and 2 add only the shake and the 4:30 protein; breakfast from week 3. The app still shows the full six-meal day from day one.
+- Deadlift at 3 × 5 as an option if his back rounds at reps 7 and 8. Decide after his first two sessions.
+- Sleep rule (under 6.5 h: two sets, no added weight; under 6 h: walk instead, not a miss) is advice only, not in the app.
+- Eight of 45 exercise videos are from less-known channels (see `js/data/videos.js`); fine for form, could be upgraded.
+- The in-app test browser holds test people "Druva" and "Guest" with fake sessions; it is not his phone.
+- `docs/program.md` and `docs/diet.md` are local only (docs/ is git-ignored).
 
 ## Commands
 
@@ -89,6 +102,13 @@ Everything else stays quiet: rules instead of cards, no shadows, no all-caps lab
 - `docs/equipment.md`: inventory from the photos, including what is missing.
 - `docs/decisions.md`: the reasoning behind the product decisions above, for anyone who wants to challenge them.
 - `docs/program.md`, `docs/diet.md`: readable copies of the generator's output for Druva. Regenerate them if the data layer or his profile changes (the snippet that wrote them is in the session history; a `scripts/` version is a reasonable next step).
+
+## Working agreements with the owner
+
+- He tests on his phone and reports from the gym; every change ships by `git push` and the phone picks it up on the next open (network-first service worker, auto-reload).
+- Every visible change gets checked in the in-app browser at phone width before pushing; screenshots, not assumptions.
+- Anything that logs uses a labelled button. Anything counted uses pips. Every screen opens with the floor band and its numbers.
+- Trainer voice: blunt, plain words, push back on the plan when the science says so, and say which parts are his to do.
 
 ## Known gaps
 
