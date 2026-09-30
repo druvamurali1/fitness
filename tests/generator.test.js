@@ -109,11 +109,11 @@ test('absurd body numbers are clamped before the calorie maths', () => {
   assert.ok(u.proteinG >= 100 && u.proteinG <= 160, `protein ${u.proteinG}`);
 });
 
-test('every plan exercise has same-movement fallbacks ending in bodyweight', async () => {
+test('every plan exercise has same-movement fallbacks including one with no equipment', async () => {
   const { swapped } = await import('../js/generator.js');
   const plan = generatePlan(druva);
   const press = plan.workouts[0].exercises.find(e => e.exerciseId === 'db_bench_press');
-  assert.deepEqual(press.alts.map(a => a.id), ['machine_chest_press', 'incline_db_press', 'push_up']);
+  assert.deepEqual(press.alts.map(a => a.id), ['machine_chest_press', 'db_floor_press', 'weighted_push_up']);
   const squat = plan.workouts[0].exercises[0];
   assert.deepEqual(squat.alts.map(a => a.id), ['goblet_squat', 'bodyweight_squat']);
   for (const w of plan.workouts) for (const e of w.exercises) assert.ok(e.alts.length >= 1, `${e.exerciseId} has no fallback`);
@@ -123,4 +123,14 @@ test('every plan exercise has same-movement fallbacks ending in bodyweight', asy
   // Knee pain: the squat slot's fallbacks never include a squat.
   const knee = generatePlan({ ...druva, pain: ['knee'] });
   for (const w of knee.workouts) for (const e of w.exercises) for (const a of e.alts) assert.ok(!['back_squat', 'goblet_squat', 'leg_press', 'leg_extension', 'db_walking_lunge', 'split_squat'].includes(a.id), a.id);
+});
+
+test('no bench and no machine: the chest slot gets a floor press, not a push-up', () => {
+  const noBench = generatePlan({ ...druva, equipment: ['dumbbells', 'cables', 'pullup_bar'] });
+  const push = noBench.workouts[0].exercises.find(e => ['db_floor_press', 'db_bench_press', 'machine_chest_press', 'push_up', 'weighted_push_up'].includes(e.exerciseId));
+  assert.equal(push.exerciseId, 'db_floor_press');
+  assert.deepEqual(push.alts.map(a => a.id), ['weighted_push_up', 'push_up']);
+  const barOnly = generatePlan({ ...druva, equipment: ['barbell'] });
+  const p2 = barOnly.workouts[0].exercises.find(e => e.role === 'secondary');
+  assert.equal(p2.exerciseId, 'barbell_floor_press');
 });

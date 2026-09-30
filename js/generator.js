@@ -10,7 +10,7 @@ const LEVEL = { novice: 0, detrained: 1, experienced: 2 };
 
 // Bump when the plan's shape or the data behind it changes; stored plans are
 // rebuilt from the profile on load when the version differs.
-export const PLAN_VERSION = 4;
+export const PLAN_VERSION = 5;
 
 export function checkRedFlags(profile) {
   return RED_FLAGS.filter(f => f.test(profile)).map(f => f.text);
@@ -126,9 +126,10 @@ export function alternatives(id, pattern, p, used = new Set()) {
   const prefs = PATTERN_PREFERENCE[pattern] || [];
   const same = Object.keys(EXERCISES).filter(k => EXERCISES[k].pattern === EXERCISES[id]?.pattern && !prefs.includes(k));
   const pool = [...prefs, ...same].filter(k => k !== id && !used.has(k) && isAllowed(k, p));
+  const picked = pool.slice(0, 3);
+  // Keep the preference order, but make sure one option needs no equipment at all.
   const body = pool.find(k => EXERCISES[k].equipment.length === 0);
-  const picked = pool.filter(k => k !== body).slice(0, body ? 2 : 3);
-  if (body) picked.push(body);
+  if (body && !picked.includes(body)) picked[Math.min(2, picked.length)] = body;
   return picked.map(k => ({ id: k, name: EXERCISES[k].name }));
 }
 
