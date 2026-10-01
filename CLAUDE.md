@@ -6,11 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal-trainer web app for Druva (the owner, a complete beginner to training). Claude acts as the trainer: it designed the intake interview, will design the program and diet from the answers, and builds the app that delivers and tracks them. The app must also onboard any other beginner from scratch through an in-app intake, but Druva's profile is the first and best-tested path.
 
-Status (end of 2026-09-30): live at https://druvamurali1.github.io/fitness/ and in daily use from 2026-10-02 (Druva's first real session is Friday 2 Oct, Workout A). Everything below is decided and should not be re-litigated without the owner asking. Druva's interview answers are in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md` (regenerate with `node scripts/write-docs.js`). Equipment photos are in the folder root, git-ignored.
+Status (end of 2026-09-30, late evening): live at https://druvamurali1.github.io/fitness/ and in daily use from 2026-10-02 (Druva's first real session is Friday 2 Oct, Workout A). Everything below is decided and should not be re-litigated without the owner asking. Druva's interview answers are in `docs/intake-questions.md`; his generated program and diet are in `docs/program.md` and `docs/diet.md` (regenerate with `node scripts/write-docs.js`). Equipment photos are in the folder root, git-ignored.
 
 ## Where we left off (read this first tomorrow)
 
-Built and live today, in order: interview and generator; (later) a 161-exercise library with muscle and equipment filters, notes, personal records, finish summary, measurements, routines; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; labelled Done buttons.
+Built and live on 2026-09-30, in order: interview and generator; guided sessions with exercise pages and verified videos; multi-person home screen; self-driven mode; design pass on every tab; hosting; 2 to 5 lifting days picked as weekdays; cardio on lifting days; input validation; same-movement fallbacks with one-tap swaps; floor presses for gyms without a bench; lighter week with stall detection; end-of-session pain check that rebuilds the plan; a 161-exercise library with muscle and equipment filters, notes, personal records, finish summary, measurements, routines (the Hevy comparison).
+
+Then, in the evening, a Hevy-style cleanup at the owner's request:
+- Session screen: slim sticky bar (title, time, volume, sets, Finish), each exercise as a compact set table (Set, Previous, weight, reps, ✓) with per-set weights and extras behind a ⋮ menu, row tints yellow when done, compact one-row rest timer.
+- Exercise page: sticky back-and-name bar with tabs Summary (video, muscles in words, chart with readout, 1M/3M/All, metric chips, personal records), History (every session's sets), How to (video, gym location, fallbacks, instructions).
+- Week, Progress and Plan open with the same slim page bar (`pageBar()`); the week strip sits on the light page.
+- Charts rebuilt: live readout above, drag to inspect, unit-labelled dashed grid, dates spaced by real time; ink line in light mode, yellow line in dark mode.
+- Exercise history now always sorts by date.
+- A static muscle map was built and then removed at the owner's request; 3D animated demos are parked.
 
 Open items, none started:
 - Parked by the owner on 2026-09-30: animated 3D exercise demos (Hevy style). Options already laid out to him: license a library (Gym Visual, ExerciseDB), build via phone video + AI motion capture + Blender with a Z-Anatomy body (Claude writes the Blender scripts), or hire an animator. Recommended a three-exercise pilot. A static front/back muscle map was built and then removed at the owner's request on 2026-09-30; do not add it back unless asked.
@@ -87,8 +95,8 @@ Two signature elements, and they are the only places the design is loud:
 - In-session logging follows Hevy, at the owner's request: a slim sticky `.sbar` (title, Time, Volume, Sets, Finish) replaces the floor band during a session; each exercise is an `.exb` block (round video thumbnail, name, one guidance line, ⋮ menu with how-to, swap, note, remove; rest time) over an `.st` set table with columns Set, Previous, weight, reps, ✓. Each set carries its own weight (`set.w`, lb); `syncWeight()` keeps `item.weightLb` as the heaviest done set for progression. Done = the ✓ square fills yellow and the whole row tints yellow; the row tint is what makes the state unmistakable, so never ship a done control without it. The earlier labelled "Done" button and the hollow pin before it are gone from set rows. Motion is limited to row tint and the timer; all of it is off under `prefers-reduced-motion`.
 
 - `.wk-strip` on Week (inside `.wk-light`, under the page bar): seven columns, a tall block per day for the workout and two small blocks for protein and water. Filled yellow when done, rust outline for a missed lifting day, chrome outline for a planned one, chalk ring on the selected day.
-- `.pip`: tappable circles for counted targets (protein portions, meals, water, beers). Tap the n-th pip to set the count to n; tap the last filled one to step back. Same hole-and-pin look as the set control. Use pips for any small integer target; use a stepper only for real numbers (weight, reps, sleep).
-- `pageBar(title, stats, right)` in `ui.js`: the slim sticky `.sbar` (title, optional control on the right, up to three label-over-number stats). Week, Progress, Plan and an active session all open with it, Hevy-style (Week: workouts, protein days, average weight; Progress: weight, waist, workouts; Plan: days, calories, protein). Only Today's idle screen and the home screen keep the big charcoal floor band.
+- `.pip`: tappable circles for counted targets (protein portions, meals, water, beers). Tap the n-th pip to set the count to n; tap the last filled one to step back. Use pips for any small integer target; use a stepper only for real numbers (weight, reps, sleep).
+- `pageBar(title, stats, right)` in `ui.js`: the slim sticky `.sbar` (title, optional control on the right, up to three label-over-number stats). Week, Progress, Plan and an active session all open with it, Hevy-style (Week: workouts, protein days, average weight; Progress: weight, waist, workouts; Plan: days, calories, protein). Only Today's idle screen, the home screen and the interview keep the big charcoal floor band.
 - The exercise page follows Hevy's: a sticky `.pbar` (back, name) with tabs Summary, History, How to. Summary opens with the coach video poster, the name and the muscles worked in words, then the headline number with a 1 month / 3 months / all time range, a line chart with metric chips (heaviest weight, estimated one rep max, best set volume; most reps or longest hold for bodyweight and timed work) and a personal records list. History lists every session's sets, newest first. How to holds the video, gym location, fallbacks and instructions. No leaderboard, on purpose.
 - `.stats`: numbers first, label under, three to a row, for in-page summaries.
 - `.tag`: the stamped plate tag. Set numbers, workout letters (`.tag.big`), slot numbers in the Today preview, and the initial on the home screen's people list all use it.
@@ -106,13 +114,13 @@ Everything else stays quiet: rules instead of cards, no shadows, no all-caps lab
 - `docs/intake-questions.md`: the trainer interview and Druva's answers. Also the spec for the onboarding flow.
 - `docs/equipment.md`: inventory from the photos, including what is missing.
 - `docs/decisions.md`: the reasoning behind the product decisions above, for anyone who wants to challenge them.
-- `docs/program.md`, `docs/diet.md`: readable copies of the generator's output for Druva. Regenerate them if the data layer or his profile changes (the snippet that wrote them is in the session history; a `scripts/` version is a reasonable next step).
+- `docs/program.md`, `docs/diet.md`: readable copies of the generator's output for Druva. Regenerate with `node scripts/write-docs.js` whenever the data layer or his profile changes.
 
 ## Working agreements with the owner
 
 - He tests on his phone and reports from the gym; every change ships by `git push` and the phone picks it up on the next open (network-first service worker, auto-reload).
 - Every visible change gets checked in the in-app browser at phone width before pushing; screenshots, not assumptions.
-- Set logging uses the Hevy-style table with a tinted row on done. Anything counted uses pips. Every tab opens with the slim page bar and its numbers; only Today (idle) and Home keep the charcoal floor band.
+- Set logging uses the Hevy-style table with a tinted row on done. Anything counted uses pips. Every tab opens with the slim page bar and its numbers; only Today (idle), Home and the interview keep the charcoal floor band. Water, cool-down and protein ticks use the same yellow ✓ square as set rows.
 - Trainer voice: blunt, plain words, push back on the plan when the science says so, and say which parts are his to do.
 
 ## Known gaps
